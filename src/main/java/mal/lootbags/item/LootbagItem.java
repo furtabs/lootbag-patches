@@ -344,10 +344,14 @@ public class LootbagItem extends Item implements IItemVarientDetails{
 		if(entityIn instanceof EntityPlayer && LootbagItem.checkInventory(is))
 		{
 			EntityPlayer player = (EntityPlayer)entityIn;
-			if(LootBags.areItemStacksEqualItem(is, player.getHeldItemOffhand(), true, true))
+			if(is == player.getHeldItemOffhand())
+			{
 				player.setItemStackToSlot(EntityEquipmentSlot.OFFHAND, ItemStack.EMPTY);
+			}
 			else
+			{
 				player.inventory.removeStackFromSlot(itemSlot);
+			}
 		}
     }
     

@@ -12,7 +12,7 @@ buildscript {
 apply plugin: 'net.minecraftforge.gradle'
 
 group = 'mal.lootbags'
-version = '2.5.8.7'
+version = '2.5.8.8'
 archivesBaseName = 'lootbags'
 
 sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '1.8'

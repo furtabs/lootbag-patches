@@ -50,7 +50,7 @@ import net.minecraftforge.fml.common.registry.GameRegistry;
 @Mod(modid = LootBags.MODID, version = LootBags.VERSION, dependencies="required:forge@[14.23.4.2703,);after:mystcraft")
 public class LootBags {
 	public static final String MODID = "lootbags";
-	public static final String VERSION = "2.5.8.7";
+	public static final String VERSION = "2.5.8.8";
 	public static final String CONFIGVERSION = "CONFIGVER258";
 	public static boolean configMismatch = true;//gets falsed if the bag config has the right version
 	
