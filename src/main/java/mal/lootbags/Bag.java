@@ -91,6 +91,10 @@ public class Bag {
 			if(!LootbagsUtil.listContainsItem(BagBlacklist, item) && !BagModBlacklist.contains(item.getItemModID()))
 			{
 				String key = item.getItemModID()+item.getItemName()+item.getContentItem().getItemDamage();
+				if(item.getContentItem().hasTagCompound())
+					key += item.getContentItem().getTagCompound().toString();
+				if(map.containsKey(key))
+					key += ":" + Integer.toHexString(System.identityHashCode(item));
 				map.put(key, item);
 				//LootbagsUtil.LogDebug("Added Item: " + item.toString() + " to bag: " + bagName + ".");
 				//bagMapWeight += item.getItemWeight();
@@ -111,10 +115,8 @@ public class Bag {
 					key += BagWhitelist.indexOf(item);
 				if(map.containsKey(key))
 				{
-					//bagMapWeight -= map.get(key).getItemWeight();
-					map.remove(key);//remove the existing entry to overwrite it with the whitelisted version
+					key += ":" + Integer.toHexString(System.identityHashCode(item));
 				}
-				
 				map.put(key, item);
 				//LootbagsUtil.LogDebug("Added whitelisted Item: " + item.toString() + " to bag: " + bagName + ".");
 				//bagMapWeight += item.getItemWeight();

@@ -336,14 +336,32 @@ public class LootMap {
 				String key = item.getItemModID()+item.getItemName()+item.getContentItem().getItemDamage();
 				if(item.getContentItem().getItem() instanceof ItemEnchantedBook && item.getContentItem().hasTagCompound())//a specific enchanted book
 					key += item.getContentItem().getTagCompound().toString();
-				generalMap.remove(key);//remove the existing entry to overwrite it with the whitelisted version
-				
+				removeMatchingGeneralEntries(key);
 				generalMap.put(key, item);
-				
-				if(!totalList.containsKey(key))
-					totalList.put(key, item);
+				totalList.put(key, item);
 			}
 		}
+	}
+
+	private void removeMatchingGeneralEntries(String key)
+	{
+		ArrayList<String> removeKeys = new ArrayList<String>();
+		for(String existingKey : generalMap.keySet())
+		{
+			if(existingKey.equals(key) || existingKey.startsWith(key + ":"))
+				removeKeys.add(existingKey);
+		}
+		for(String existingKey : removeKeys)
+			generalMap.remove(existingKey);
+
+		removeKeys.clear();
+		for(String existingKey : totalList.keySet())
+		{
+			if(existingKey.equals(key) || existingKey.startsWith(key + ":"))
+				removeKeys.add(existingKey);
+		}
+		for(String existingKey : removeKeys)
+			totalList.remove(existingKey);
 	}
 
 	/**
@@ -457,14 +475,11 @@ public class LootMap {
 							}
 							else
 							{
-								LootItem it = generalMap.get(key);
-								int wweight = it.getItemWeight();
-								wweight = (wweight+item.getItemWeight())/2;
-								it.setItemWeight(wweight);
-								generalMap.put(key, it);
-								LootbagsUtil.LogDebug("Merged new General Item: " + item.toString());
-								if(!totalList.containsKey(key))
-									totalList.put(key, it);
+								String uniqueKey = key + ":" + Integer.toHexString(System.identityHashCode(item));
+								generalMap.put(uniqueKey, item);
+								LootbagsUtil.LogDebug("Added duplicate General Item as separate entry: " + item.toString());
+								if(!totalList.containsKey(uniqueKey))
+									totalList.put(uniqueKey, item);
 							}
 						}
 					}
