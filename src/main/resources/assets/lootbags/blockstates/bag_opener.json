@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "lootbags:block/bag_opener"
+    }
+  }
+}

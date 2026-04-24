@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "lootbags:block/loot_recycler"
+    }
+  }
+}
