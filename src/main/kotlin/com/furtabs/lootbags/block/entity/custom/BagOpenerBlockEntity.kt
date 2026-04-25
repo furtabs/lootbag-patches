@@ -168,39 +168,50 @@ class BagOpenerBlockEntity(
     private fun craftItem(inputSlot: Int) {
         if (inputSlot < 0 || inputSlot >= inputItemHandler.slots) return
 
-        val inputItemStack = inputItemHandler.getStackInSlot(inputSlot).copy()
+        val inputItemStack = inputItemHandler.getStackInSlot(inputSlot)
         if (inputItemStack.isEmpty) return
-        
-        var isValid = false
-        for (bag in ModItems.LOOT_BAGS) {
-            if (inputItemStack.item == bag.get()) isValid = true
-        }
-        if (!isValid) return
 
         val bagItem = inputItemStack.item as? LootBagItem ?: return
         val level = this.level ?: return
         val serverLevel = level as? ServerLevel ?: return
 
-        val extracted = inputItemHandler.extractItem(inputSlot, 1, false)
-        if (extracted.isEmpty) return
-
-        val pos = Vec3(blockPos.x.toDouble() + 0.5, blockPos.y.toDouble() + 0.5, blockPos.z.toDouble() + 0.5)
-        
-        val bagType = bagItem.asLootBagType()
-        val maxStacks = 5
-        
-        val loots = bagType.lootGenerator.generateLoot(
-            serverLevel,
-            LootParams.Builder(serverLevel)
-                .withParameter(LootContextParams.BLOCK_STATE, blockState)
-                .withParameter(LootContextParams.BLOCK_ENTITY, this)
-                .withParameter(LootContextParams.ORIGIN, pos),
-            maxStacks = maxStacks
-        )
-        
-        for (loot in loots) {
-            if (!putIntoOutputSlots(loot)) break
+        val loots: List<ItemStack> = if (inputItemStack.hasTag() && inputItemStack.tag!!.contains("Items")) {
+            // This bag was already opened/viewed; extract the existing items
+            getContentsFromNBT(inputItemStack)
+        } else {
+            // This is a "fresh" bag; generate loot normally
+            val bagType = bagItem.asLootBagType()
+            bagType.lootGenerator.generateLoot(
+                serverLevel,
+                LootParams.Builder(serverLevel)
+                    .withParameter(LootContextParams.BLOCK_STATE, blockState)
+                    .withParameter(LootContextParams.BLOCK_ENTITY, this)
+                    .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(blockPos)),
+                maxStacks = 5
+            )
         }
+
+        if (loots.isNotEmpty()) {
+            val extracted = inputItemHandler.extractItem(inputSlot, 1, false)
+            if (!extracted.isEmpty) {
+                for (loot in loots) {
+                    if (!putIntoOutputSlots(loot)) {
+                        // Optional: If output is full, drop the remaining items on the ground
+                        Containers.dropItemStack(level, worldPosition.x.toDouble(), worldPosition.y.toDouble(), worldPosition.z.toDouble(), loot)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getContentsFromNBT(stack: ItemStack): List<ItemStack> {
+        val items = mutableListOf<ItemStack>()
+        val tag = stack.tag ?: return items
+        val list = tag.getList("Items", 10) // 10 is the ID for CompoundTag
+        for (i in 0 until list.size) {
+            items.add(ItemStack.of(list.getCompound(i)))
+        }
+        return items
     }
 
     private fun putIntoOutputSlots(stack: ItemStack): Boolean {

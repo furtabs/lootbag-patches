@@ -34,6 +34,7 @@ class BagStorageBlockEntity(
     pos: BlockPos,
     blockState: BlockState
 ) : BlockEntity(ModBlockEntities.BAG_STORAGE.get(), pos, blockState), MenuProvider {
+
     enum class ContainerDataType {
         STORED_BAG_AMOUNT,
         TARGET_BAG_TYPE
@@ -41,6 +42,24 @@ class BagStorageBlockEntity(
 
     private inner class BagStorageItemHandler : LootBagItemHandler(SLOTS_COUNT) {
         override fun isInputSlot(slot: Int): Boolean = slot == INPUT_SLOT
+
+        /**
+         * Logic to reject "dirty" bags from entering storage.
+         */
+        override fun isItemValid(slot: Int, stack: ItemStack): Boolean {
+            if (!isInputSlot(slot)) return false
+            if (stack.item !is LootBagItem) return false
+            
+            val tag = stack.tag ?: return true
+            
+            // 1. Check for the 'opened' flag
+            if (tag.getBoolean("opened")) return false
+            
+            // 2. Check for stored loot list (NBT ID 9 is ListTag)
+            if (tag.contains("Items", 9)) return false
+            
+            return true
+        }
 
         override fun extractItem(slot: Int, amount: Int, simulate: Boolean): ItemStack {
             if (simulate) {
@@ -51,7 +70,6 @@ class BagStorageBlockEntity(
                     storedBagAmount -= resultStack.count * targetBagType.amountFactorEquivalentTo(LootBagType.COMMON).toInt()
                 }
                 updateOutputSlot()
-
                 return resultStack
             }
         }
@@ -91,6 +109,7 @@ class BagStorageBlockEntity(
     private var targetBagType: LootBagType = LootBagType.COMMON
     private val targetBagAmount: Int
         get() = (storedBagAmount.toFloat() * LootBagType.COMMON.amountFactorEquivalentTo(targetBagType)).toInt()
+
     private val data = object : ContainerData {
         override fun get(index: Int): Int = when (index) {
             ContainerDataType.STORED_BAG_AMOUNT.ordinal -> storedBagAmount
@@ -119,7 +138,6 @@ class BagStorageBlockEntity(
         tag.put("inventory", itemHandler.serializeNBT())
         tag.putInt("stored_bag_amount", storedBagAmount)
         tag.putInt("target_bag_type", targetBagType.ordinal)
-
         super.saveAdditional(tag)
     }
 
@@ -133,13 +151,24 @@ class BagStorageBlockEntity(
         }
     }
 
+    /**
+     * Updated tick to validate bags before adding them to stored volume.
+     */
     fun tick(level: Level, pos: BlockPos, state: BlockState) {
-        val inputStack = itemHandler.getStackInSlot(INPUT_SLOT).copy()
-        val inputItem = inputStack.item
-        if (!inputStack.isEmpty && inputItem is LootBagItem) {
-            itemHandler.extractItem(INPUT_SLOT, inputStack.count, false)
-            storedBagAmount += (inputStack.count.toFloat() * (inputItem as LootBagItem).asLootBagType()
-                .amountFactorEquivalentTo(LootBagType.COMMON)).toInt()
+        val inputStack = itemHandler.getStackInSlot(INPUT_SLOT)
+        
+        // CHECK: Don't bypass the isItemValid check!
+        if (!inputStack.isEmpty && itemHandler.isItemValid(INPUT_SLOT, inputStack)) {
+            val inputItem = inputStack.item
+            if (inputItem is LootBagItem) {
+                val count = inputStack.count
+                val bagType = inputItem.asLootBagType()
+                
+                // Safe to extract now
+                itemHandler.extractItem(INPUT_SLOT, count, false)
+                
+                storedBagAmount += (count.toFloat() * bagType.amountFactorEquivalentTo(LootBagType.COMMON)).toInt()
+            }
         }
 
         (itemHandler as BagStorageItemHandler).updateOutputSlot()
