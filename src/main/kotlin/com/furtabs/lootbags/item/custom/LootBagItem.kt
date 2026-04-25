@@ -7,6 +7,7 @@ import com.furtabs.lootbags.util.LootBagType
 import com.furtabs.lootbags.util.MAX_LOOT_BAG_ITEM_STACKS
 import com.furtabs.lootbags.util.readStoredOpenLoot
 import com.furtabs.lootbags.util.rollLootBagDisplayedItemCount
+import com.furtabs.lootbags.util.writeStoredOpenLoot
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.stats.Stats
@@ -31,14 +32,15 @@ class LootBagItem(
         val stack = player.getItemInHand(usedHand)
 
         if (!level.isClientSide && level is ServerLevel && player is ServerPlayer) {
+            // 1. Try to read existing loot from NBT
             val stored = readStoredOpenLoot(stack)
             
-            // The if (stored != null) block below fixes the "Argument type mismatch"
-            val handler = if (stored != null) {
-                newLootResultHandlerWithLoot(stored)
+            // 2. Determine if we use stored loot or roll new loot
+            val loots: List<ItemStack> = if (stored != null && stored.isNotEmpty()) {
+                stored
             } else {
                 val maxStacks = rollLootBagDisplayedItemCount(level.random)
-                val loots = type.lootGenerator.generateLoot(
+                val generated = type.lootGenerator.generateLoot(
                     level,
                     LootParams.Builder(level)
                         .withParameter(LootContextParams.THIS_ENTITY, player)
@@ -46,9 +48,13 @@ class LootBagItem(
                         .withParameter(LootContextParams.TOOL, stack),
                     maxStacks = maxStacks
                 )
-                writeStoredOpenLoot(stack, loots)
-                newLootResultHandlerWithLoot(loots)
+                // Save it immediately so the Bag Opener or a re-open sees the same items
+                writeStoredOpenLoot(stack, generated)
+                generated
             }
+
+            // 3. Create the handler for the Menu
+            val handler = newLootResultHandlerWithLoot(loots)
 
             val menuProvider = object : MenuProvider {
                 override fun getDisplayName() = stack.hoverName
@@ -56,8 +62,10 @@ class LootBagItem(
                     OpenLootBagMenu(ModMenuTypes.OPEN_LOOT_BAG.get(), id, inv, handler, usedHand)
             }
 
+            // 4. Open the screen and sync the loot to the client
             NetworkHooks.openScreen(player, menuProvider) { buf ->
                 buf.writeByte(usedHand.ordinal)
+                // Ensure we write exactly the expected amount of slots to the buffer
                 for (i in 0 until MAX_LOOT_BAG_ITEM_STACKS) {
                     buf.writeItem(handler.getStackInSlot(i))
                 }

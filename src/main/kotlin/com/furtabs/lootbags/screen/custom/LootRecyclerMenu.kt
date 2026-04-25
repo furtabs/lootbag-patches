@@ -9,6 +9,7 @@ import net.minecraft.world.inventory.SimpleContainerData
 import net.minecraft.world.level.Level
 import com.furtabs.lootbags.block.ModBlocks
 import com.furtabs.lootbags.block.entity.custom.LootRecyclerBlockEntity
+import com.furtabs.lootbags.block.entity.custom.LootRecyclerBlockEntity.ContainerDataType
 import com.furtabs.lootbags.screen.ModMenuTypes
 import com.furtabs.lootbags.util.LootBagType
 
