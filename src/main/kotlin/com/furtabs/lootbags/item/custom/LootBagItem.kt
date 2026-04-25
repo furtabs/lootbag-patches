@@ -26,10 +26,14 @@ class LootBagItem(
     val type: LootBagType,
     properties: Properties = Properties().stacksTo(1)
 ) : Item(properties) {
+
     override fun use(level: Level, player: Player, usedHand: InteractionHand): InteractionResultHolder<ItemStack> {
         val stack = player.getItemInHand(usedHand)
+
         if (!level.isClientSide && level is ServerLevel && player is ServerPlayer) {
             val stored = readStoredOpenLoot(stack)
+            
+            // The if (stored != null) block below fixes the "Argument type mismatch"
             val handler = if (stored != null) {
                 newLootResultHandlerWithLoot(stored)
             } else {
@@ -38,32 +42,23 @@ class LootBagItem(
                     level,
                     LootParams.Builder(level)
                         .withParameter(LootContextParams.THIS_ENTITY, player)
-                        .withParameter(LootContextParams.LAST_DAMAGE_PLAYER, player)
-                        .withParameter(LootContextParams.KILLER_ENTITY, player)
-                        .withParameter(LootContextParams.DIRECT_KILLER_ENTITY, player)
-                        .withParameter(LootContextParams.ORIGIN, player.getPosition(0F))
+                        .withParameter(LootContextParams.ORIGIN, player.position())
                         .withParameter(LootContextParams.TOOL, stack),
                     maxStacks = maxStacks
                 )
+                writeStoredOpenLoot(stack, loots)
                 newLootResultHandlerWithLoot(loots)
             }
-            val menuProvider: MenuProvider = object : MenuProvider {
+
+            val menuProvider = object : MenuProvider {
                 override fun getDisplayName() = stack.hoverName
-                override fun createMenu(
-                    containerId: Int,
-                    playerInventory: Inventory,
-                    p: Player
-                ) = OpenLootBagMenu(
-                    ModMenuTypes.OPEN_LOOT_BAG.get(),
-                    containerId,
-                    playerInventory,
-                    handler,
-                    usedHand
-                )
+                override fun createMenu(id: Int, inv: Inventory, p: Player) = 
+                    OpenLootBagMenu(ModMenuTypes.OPEN_LOOT_BAG.get(), id, inv, handler, usedHand)
             }
+
             NetworkHooks.openScreen(player, menuProvider) { buf ->
                 buf.writeByte(usedHand.ordinal)
-                for (i in 0..<MAX_LOOT_BAG_ITEM_STACKS) {
+                for (i in 0 until MAX_LOOT_BAG_ITEM_STACKS) {
                     buf.writeItem(handler.getStackInSlot(i))
                 }
             }

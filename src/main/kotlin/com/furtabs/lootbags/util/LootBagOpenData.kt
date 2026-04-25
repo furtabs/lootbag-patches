@@ -12,37 +12,31 @@ private const val KEY_LOOT_SLOTS: String = "LootBagOpenItems"
  * Returns up to [MAX_LOOT_BAG_ITEM_STACKS] stacks read from the bag's NBT, or null if nothing stored.
  */
 @Suppress("DEPRECATION")
-fun readStoredOpenLoot(bagStack: ItemStack): List<ItemStack>? {
-    val root = bagStack.tag ?: return null
-    if (!root.contains(KEY_LOOT_SLOTS, Tag.TAG_LIST.toInt())) {
-        return null
+fun writeStoredOpenLoot(stack: ItemStack, loots: List<ItemStack>) {
+    val tag = stack.orCreateTag
+    val listTag = ListTag()
+    for (loot in loots) {
+        if (!loot.isEmpty) {
+            val lootTag = CompoundTag()
+            loot.save(lootTag)
+            listTag.add(lootTag)
+        }
     }
-    val list = root.getList(KEY_LOOT_SLOTS, Tag.TAG_COMPOUND.toInt())
-    if (list.isEmpty()) {
-        return null
-    }
-    val out = ArrayList<ItemStack>(MAX_LOOT_BAG_ITEM_STACKS)
-    for (i in 0..<MAX_LOOT_BAG_ITEM_STACKS) {
-        val compound = if (i < list.size) list.getCompound(i) else CompoundTag()
-        val parsed = if (compound.isEmpty) ItemStack.EMPTY else ItemStack.of(compound)
-        out.add(parsed)
-    }
-    return if (out.any { !it.isEmpty }) out else null
+    tag.put("Items", listTag)
+    tag.putBoolean("opened", true) 
 }
 
 @Suppress("DEPRECATION")
-fun writeStoredOpenLoot(bagStack: ItemStack, handler: ItemStackHandler) {
-    val root = bagStack.orCreateTag
-    val list = ListTag()
-    for (i in 0..<MAX_LOOT_BAG_ITEM_STACKS) {
-        val slot = handler.getStackInSlot(i)
-        val nbt = CompoundTag()
-        if (!slot.isEmpty) {
-            slot.save(nbt)
-        }
-        list.add(nbt)
+fun readStoredOpenLoot(stack: ItemStack): List<ItemStack>? {
+    val tag = stack.tag ?: return null
+    if (!tag.contains("Items", 9)) return null
+    
+    val listTag = tag.getList("Items", 10)
+    val loots = mutableListOf<ItemStack>()
+    for (i in 0 until listTag.size) {
+        loots.add(ItemStack.of(listTag.getCompound(i)))
     }
-    root.put(KEY_LOOT_SLOTS, list)
+    return if (loots.isEmpty()) null else loots
 }
 
 @Suppress("DEPRECATION")

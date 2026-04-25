@@ -29,7 +29,7 @@ class OpenLootBagMenu : AbstractContainerMenu {
         val handIdx = buf.readByte().toInt().coerceIn(0, InteractionHand.entries.size - 1)
         usedHand = InteractionHand.entries[handIdx]
         lootHandler = newLootResultHandler()
-        for (i in 0..<MAX_LOOT_BAG_ITEM_STACKS) {
+        for (i in 0 until MAX_LOOT_BAG_ITEM_STACKS) {
             lootHandler.setStackInSlot(i, buf.readItem())
         }
         addSlots(inv)
@@ -50,7 +50,7 @@ class OpenLootBagMenu : AbstractContainerMenu {
     private fun addSlots(inv: Inventory) {
         addPlayerInventorySlots(inv, PLAYER_INV_X, PLAYER_INV_Y, ::addSlot)
         addPlayerHotbarSlots(inv, PLAYER_HOTBAR_X, PLAYER_HOTBAR_Y, ::addSlot)
-        for (i in 0..<MAX_LOOT_BAG_ITEM_STACKS) {
+        for (i in 0 until MAX_LOOT_BAG_ITEM_STACKS) {
             addSlot(
                 object : SlotItemHandler(lootHandler, i, LOOT_START_X + i * 18, LOOT_Y) {
                     override fun mayPlace(stack: ItemStack): Boolean = false
@@ -66,21 +66,30 @@ class OpenLootBagMenu : AbstractContainerMenu {
 
     override fun removed(player: Player) {
         super.removed(player)
-        if (player !is ServerPlayer) {
-            return
-        }
+        if (player !is ServerPlayer) return
+
         val bagStack = player.getItemInHand(usedHand)
-        if (bagStack.isEmpty || bagStack.item !is LootBagItem) {
-            return
-        }
-        val allTaken = (0..<MAX_LOOT_BAG_ITEM_STACKS).all { lootHandler.getStackInSlot(it).isEmpty }
+        if (bagStack.isEmpty || bagStack.item !is LootBagItem) return
+
+        // Check if all slots are empty
+        val allTaken = (0 until MAX_LOOT_BAG_ITEM_STACKS).all { lootHandler.getStackInSlot(it).isEmpty }
+        
         if (allTaken) {
             clearStoredOpenLoot(bagStack)
             if (!player.abilities.instabuild) {
                 bagStack.shrink(1)
             }
         } else {
-            writeStoredOpenLoot(bagStack, lootHandler)
+            // FIX: Convert the ItemStackHandler content into a List<ItemStack> 
+            // to match the utility function signature
+            val itemsToSave = mutableListOf<ItemStack>()
+            for (i in 0 until MAX_LOOT_BAG_ITEM_STACKS) {
+                val stack = lootHandler.getStackInSlot(i)
+                if (!stack.isEmpty) {
+                    itemsToSave.add(stack)
+                }
+            }
+            writeStoredOpenLoot(bagStack, itemsToSave)
         }
     }
 
