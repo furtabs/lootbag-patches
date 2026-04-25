@@ -60,10 +60,7 @@ class BagOpenerBlockEntity(
 
     val inputItemHandler: ItemStackHandler = BagOpenerItemHandler()
     val outputItemHandler: ItemStackHandler = object : ItemStackHandler(OUTPUT_SLOTS_COUNT) {
-        // Refuse to insert any items because the slots are used for output purpose only.
         override fun isItemValid(slot: Int, stack: ItemStack): Boolean = false
-
-        // Refuse to insert any items because the slots are used for output purpose only.
         override fun insertItem(slot: Int, stack: ItemStack, simulate: Boolean): ItemStack = stack.copy()
 
         override fun onContentsChanged(slot: Int) {
@@ -117,7 +114,6 @@ class BagOpenerBlockEntity(
         tag.put("output_inventory", outputItemHandler.serializeNBT())
         tag.putInt("progress", progress)
         tag.putInt("max_progress", maxProgress)
-
         super.saveAdditional(tag)
     }
 
@@ -146,73 +142,53 @@ class BagOpenerBlockEntity(
 
     private val availableInputSlotForCrafting: Int?
         get() {
-            // If all the output slots are occupied, the crafting is not available.
             var allOccupied = true
             for (i in 0 ..< outputItemHandler.slots) {
                 allOccupied = allOccupied && !outputItemHandler.getStackInSlot(i).isEmpty
             }
-            if (allOccupied) {
-                return null
-            }
+            if (allOccupied) return null
 
-            // Then check whether there is any input item in the input slots.
             for (i in 0 ..< inputItemHandler.slots) {
-                if (!inputItemHandler.getStackInSlot(i).isEmpty) {
-                    return i
-                }
+                if (!inputItemHandler.getStackInSlot(i).isEmpty) return i
             }
-
-            // If no input item is found, the crafting is not available.
             return null
         }
 
     private fun increaseCraftingProgress() {
-        if (progress < maxProgress) {
-            progress++
-        }
+        if (progress < maxProgress) progress++
     }
 
     private fun decreaseCraftingProgress() {
-        if (progress > 0) {
-            progress--
-        }
+        if (progress > 0) progress--
     }
 
     private val hasCraftingFinished: Boolean
         get() = progress >= maxProgress
 
     private fun craftItem(inputSlot: Int) {
-        // Ensure the input slot index is valid.
-        if (inputSlot < 0 || inputSlot >= inputItemHandler.slots) {
-            return
-        }
+        if (inputSlot < 0 || inputSlot >= inputItemHandler.slots) return
 
-        // Get the input item and check whether it is valid for crafting.
         val inputItemStack = inputItemHandler.getStackInSlot(inputSlot).copy()
-        if (inputItemStack.isEmpty) {
-            return
-        }
+        if (inputItemStack.isEmpty) return
+        
         var isValid = false
         for (bag in ModItems.LOOT_BAGS) {
-            if (inputItemStack.item == bag.get()) {
-                isValid = true
-            }
+            if (inputItemStack.item == bag.get()) isValid = true
         }
-        if (!isValid) {
-            return
-        }
+        if (!isValid) return
+
         val bagItem = inputItemStack.item as? LootBagItem ?: return
         val level = this.level ?: return
         val serverLevel = level as? ServerLevel ?: return
 
-        // Consume one item from the input slot and put the output loot item into the output slots.
         val extracted = inputItemHandler.extractItem(inputSlot, 1, false)
-        if (extracted.isEmpty) {
-            return
-        }
+        if (extracted.isEmpty) return
+
         val pos = Vec3(blockPos.x.toDouble() + 0.5, blockPos.y.toDouble() + 0.5, blockPos.z.toDouble() + 0.5)
+        
         val bagType = bagItem.asLootBagType()
-        val maxStacks = rollLootBagDisplayedItemCount(serverLevel.random)
+        val maxStacks = 5
+        
         val loots = bagType.lootGenerator.generateLoot(
             serverLevel,
             LootParams.Builder(serverLevel)
@@ -221,10 +197,9 @@ class BagOpenerBlockEntity(
                 .withParameter(LootContextParams.ORIGIN, pos),
             maxStacks = maxStacks
         )
+        
         for (loot in loots) {
-            if (!putIntoOutputSlots(loot)) {
-                break
-            }
+            if (!putIntoOutputSlots(loot)) break
         }
     }
 
@@ -242,29 +217,21 @@ class BagOpenerBlockEntity(
                 val amountToPutInto = maxCapacity - currentStack.count
                 val remainingAfterPut = remainingStack.count - amountToPutInto
                 if (remainingAfterPut < 0) {
-                    // Too few items to be put into the current stack, put the available count and set the
-                    // remaining stack to empty.
                     outputItemHandler.setStackInSlot(i, currentStack.copy().also { it.count += remainingStack.count })
                     remainingStack.count = 0
                 } else {
-                    // Remaining items are enough to be put into the current stack, put the amount to let
-                    // the current stack become full.
                     outputItemHandler.setStackInSlot(i, currentStack.copy().also { it.count = maxCapacity })
                     remainingStack.count = remainingAfterPut
                 }
             }
-            if (remainingStack.isEmpty) {
-                // No items left to be put; quit the loop.
-                break
-            }
+            if (remainingStack.isEmpty) break
         }
-
         return remainingStack.isEmpty
     }
 
     private fun resetProgress() {
         progress = 0
-        maxProgress = 60 // Reset max progress as well in order to get rid of unexpected situations.
+        maxProgress = 60
     }
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener> =
@@ -278,11 +245,7 @@ class BagOpenerBlockEntity(
 
     override fun <T> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
         if (cap == ForgeCapabilities.ITEM_HANDLER) {
-            return if (side == Direction.DOWN) {
-                lazyOutputCap.cast()
-            } else {
-                lazyInputCap.cast()
-            }
+            return if (side == Direction.DOWN) lazyOutputCap.cast() else lazyInputCap.cast()
         }
         return super.getCapability(cap, side)
     }
