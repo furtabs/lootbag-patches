@@ -2,14 +2,14 @@
 	"format_version": "1.21.11",
 	"credit": "Made with Blockbench",
 	"textures": {
-		"1": "machine_bottom",
-		"2": "machine_side",
-		"3": "machine_top",
-		"4": "recycler_front",
-		"5": "recycler_side",
-		"6": "loot_recycler_front",
-		"7": "recycler_pivot",
-		"particle": "recycler_pivot"
+		"1": "lootbags:block/machine_bottom",
+		"2": "lootbags:block/machine_side",
+		"3": "lootbags:block/machine_top",
+		"4": "lootbags:block/recycler_front",
+		"5": "lootbags:block/recycler_side",
+		"6": "lootbags:block/loot_recycler_front",
+		"7": "lootbags:block/recycler_pivot",
+		"particle": "lootbags:block/recycler_pivot"
 	},
 	"elements": [
 		{
