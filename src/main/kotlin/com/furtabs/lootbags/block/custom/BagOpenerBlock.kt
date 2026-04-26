@@ -4,25 +4,28 @@ import com.furtabs.lootbags.block.entity.ModBlockEntities
 import com.furtabs.lootbags.block.entity.custom.BagOpenerBlockEntity
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.Containers
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
-import net.minecraft.world.MenuProvider
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.context.BlockPlaceContext
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.BaseEntityBlock
-import net.minecraft.world.level.block.Block // Added this missing import
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Mirror
 import net.minecraft.world.level.block.RenderShape
 import net.minecraft.world.level.block.Rotation
-import net.minecraft.world.level.block.Mirror
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
-import net.minecraft.world.level.block.state.BlockState // Ensure only ONE of these exists
+import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.block.state.properties.DirectionProperty
 import net.minecraft.world.phys.BlockHitResult
+import net.minecraftforge.common.capabilities.ForgeCapabilities
+import net.minecraftforge.network.NetworkHooks
 
 class BagOpenerBlock(
     properties: Properties = Properties.of()
@@ -38,7 +41,6 @@ class BagOpenerBlock(
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH))
     }
 
-    // This was failing because 'Block' wasn't imported
     override fun createBlockStateDefinition(builder: StateDefinition.Builder<Block, BlockState>) {
         builder.add(FACING)
     }
@@ -58,7 +60,9 @@ class BagOpenerBlock(
         if (!level.isClientSide) {
             val entity = level.getBlockEntity(pos)
             if (entity is BagOpenerBlockEntity) {
-                player.openMenu(entity as MenuProvider)
+                NetworkHooks.openScreen(player as ServerPlayer, entity, pos)
+            } else {
+                throw IllegalStateException("Our Container provider is missing!")
             }
         }
         return InteractionResult.sidedSuccess(level.isClientSide)
@@ -91,7 +95,11 @@ class BagOpenerBlock(
         if (state.block != newState.block) {
             val blockEntity = level.getBlockEntity(pos)
             if (blockEntity is BagOpenerBlockEntity) {
-                blockEntity.drops()
+                blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent { handler ->
+                    for (i in 0 until handler.slots) {
+                        Containers.dropItemStack(level, pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), handler.getStackInSlot(i))
+                    }
+                }
                 blockEntity.invalidateCaps()
             }
         }

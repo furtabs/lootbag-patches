@@ -4,19 +4,17 @@ import com.furtabs.lootbags.block.entity.ModBlockEntities
 import com.furtabs.lootbags.block.entity.custom.LootRecyclerBlockEntity
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.Containers
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
-import net.minecraft.world.MenuProvider
-import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.context.BlockPlaceContext
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.Mirror
-import net.minecraft.world.level.block.Rotation
 import net.minecraft.world.level.block.RenderShape
+import net.minecraft.world.level.block.Rotation
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
@@ -25,8 +23,9 @@ import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.block.state.properties.DirectionProperty
 import net.minecraft.world.phys.BlockHitResult
+import net.minecraftforge.common.capabilities.ForgeCapabilities
+import net.minecraftforge.network.NetworkHooks
 
-// Note: Ensure LootBagEntityBlock also extends BaseEntityBlock
 class LootRecyclerBlock(
     properties: Properties = Properties.of()
         .strength(3.5F)
@@ -49,8 +48,6 @@ class LootRecyclerBlock(
         return defaultBlockState().setValue(FACING, context.horizontalDirection.opposite)
     }
 
-    /* --- 1.21.1 Interaction Logic --- */
-
     override fun use(
         state: BlockState,
         level: Level,
@@ -62,8 +59,7 @@ class LootRecyclerBlock(
         if (!level.isClientSide) {
             val blockEntity = level.getBlockEntity(pos)
             if (blockEntity is LootRecyclerBlockEntity) {
-                // In 1.21.1, NetworkHooks is gone. Use this instead:
-                player.openMenu(blockEntity as MenuProvider)
+                NetworkHooks.openScreen(player as ServerPlayer, blockEntity, pos)
             } else {
                 throw IllegalStateException("Our Container provider is missing!")
             }
@@ -71,9 +67,7 @@ class LootRecyclerBlock(
         return InteractionResult.sidedSuccess(level.isClientSide)
     }
 
-    /* --- Standard Boilerplate --- */
-
-    override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity = 
+    override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
         LootRecyclerBlockEntity(pos, state)
 
     override fun <T : BlockEntity?> getTicker(
@@ -94,14 +88,17 @@ class LootRecyclerBlock(
         if (state.block != newState.block) {
             val blockEntity = level.getBlockEntity(pos)
             if (blockEntity is LootRecyclerBlockEntity) {
-                // Drop items here if you have an inventory
-                blockEntity.invalidateCaps() 
+                blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent { handler ->
+                    for (i in 0 until handler.slots) {
+                        Containers.dropItemStack(level, pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), handler.getStackInSlot(i))
+                    }
+                }
+                level.updateNeighbourForOutputSignal(pos, this)
             }
         }
         super.onRemove(state, level, pos, newState, movedByPiston)
     }
 
-    // Rotations
     override fun rotate(state: BlockState, rotation: Rotation): BlockState =
         state.setValue(FACING, rotation.rotate(state.getValue(FACING)))
 
