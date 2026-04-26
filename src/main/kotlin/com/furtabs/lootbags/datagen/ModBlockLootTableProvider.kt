@@ -10,7 +10,9 @@ import net.minecraft.world.level.storage.loot.functions.CopyNbtFunction
 import net.minecraft.world.level.storage.loot.functions.CopyNbtFunction.MergeStrategy
 import net.minecraft.world.level.storage.loot.providers.nbt.ContextNbtProvider
 import net.minecraft.world.level.storage.loot.providers.number.ConstantValue
+import com.furtabs.lootbags.LootBags
 import com.furtabs.lootbags.block.ModBlocks
+import net.minecraftforge.registries.ForgeRegistries
 
 class ModBlockLootTableProvider : BlockLootSubProvider(setOf(), FeatureFlags.REGISTRY.allFlags()) {
     override fun generate() {
@@ -36,4 +38,8 @@ class ModBlockLootTableProvider : BlockLootSubProvider(setOf(), FeatureFlags.REG
                 )
         }
     }
+
+    override fun getKnownBlocks(): Iterable<Block> =
+        ForgeRegistries.BLOCKS.values
+            .filter { block -> ForgeRegistries.BLOCKS.getKey(block)?.namespace == LootBags.MOD_ID }
 }
