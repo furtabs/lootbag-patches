@@ -28,17 +28,13 @@ enum class LootBagType(
     /**
      * Chance for this loot bag type to be dropped, from 0.0 to 1.0 inclusive.
      */
-    val dropChance: Double,
-    /**
-     * Amount range for this loot bag type to be dropped.
-     */
-    val dropAmountRange: UIntRange
+    val dropChance: Double
 ) : ItemLike {
-    COMMON("common_loot_bag", 0U, true, false, 0.4, 0U .. 5U),
-    UNCOMMON("uncommon_loot_bag", 1U, true, false, 0.1, 0U .. 3U),
-    RARE("rare_loot_bag", 2U, true, false, 0.025, 0U .. 2U),
-    EPIC("epic_loot_bag", 3U, true, false, 0.00625, 0U .. 2U),
-    LEGENDARY("legendary_loot_bag", 4U, true, false, 0.0015625, 0U .. 1U);
+    COMMON("common_loot_bag", 0U, true, false, 0.4),
+    UNCOMMON("uncommon_loot_bag", 1U, true, false, 0.1),
+    RARE("rare_loot_bag", 2U, true, false, 0.025),
+    EPIC("epic_loot_bag", 3U, true, false, 0.00625),
+    LEGENDARY("legendary_loot_bag", 4U, true, false, 0.0015625);
 
     companion object {
         /**

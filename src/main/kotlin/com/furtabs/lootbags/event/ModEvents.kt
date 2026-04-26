@@ -23,12 +23,8 @@ object ModEvents {
             val rand = Mth.nextDouble(random, 0.0, 1.0)
             if (rand <= bagType.dropChance) {
                 val entityPos = event.entity.getPosition(0F)
-                val min = bagType.dropAmountRange.first.toInt()
-                val max = bagType.dropAmountRange.last.toInt()
-                val amount = if (min >= max) min else Mth.nextInt(random, min, max)
-                if (amount <= 0) {
-                    continue
-                }
+                // Drop a single loot bag per successful roll.
+                val amount = 1
                 val stack = ItemStack(bagType.asItem(), amount)
                 val entities = newItemEntitiesForDropping(event.entity.level(), entityPos, stack)
                 event.drops.addAll(entities)
