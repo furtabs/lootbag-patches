@@ -42,7 +42,9 @@ fun generateLoot(
         lootParamsBuilder: LootParams.Builder = LootParams.Builder(level),
         maxStacks: Int = MAX_LOOT_BAG_ITEM_STACKS
     ): List<ItemStack> {
-        val random = level.random
+        // Do not use level.random here; JEI preview can be triggered from render thread.
+        // Using a local RNG avoids ThreadingDetector violations.
+        val random = RandomSource.create()
 
         // 1. Pick one loot table ID from known vanilla chest tables.
         val selectedId = pickLootTableId(VANILLA_CHEST_TABLES, random, bagTier)
