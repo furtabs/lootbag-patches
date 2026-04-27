@@ -3,13 +3,13 @@ package com.furtabs.lootbags.jei
 import com.furtabs.lootbags.util.LootBagType
 import mezz.jei.api.IModPlugin
 import mezz.jei.api.JeiPlugin
+import mezz.jei.api.recipe.RecipeType
 import mezz.jei.api.registration.IRecipeCategoryRegistration
 import mezz.jei.api.registration.IRecipeRegistration
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.minecraft.world.level.storage.loot.LootParams
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams
 import net.minecraft.world.phys.Vec3
@@ -17,10 +17,16 @@ import java.util.concurrent.ConcurrentHashMap
 
 @JeiPlugin
 class LootBagsJEIPlugin : IModPlugin {
+    
     companion object {
         val PLUGIN_UID: ResourceLocation = ResourceLocation.fromNamespaceAndPath("lootbags", "jei_plugin")
+        
+        // Map to store a unique RecipeType for every LootBagType
+        private val RECIPE_TYPES = mutableMapOf<LootBagType, RecipeType<LootBagRecipe>>()
+        
         private val runtimeOutputs = ConcurrentHashMap<LootBagType, List<ItemStack>>()
         private val pendingBags = ConcurrentHashMap.newKeySet<LootBagType>()
+        
         @Volatile
         private var preloadStarted = false
         @Volatile
@@ -43,26 +49,19 @@ class LootBagsJEIPlugin : IModPlugin {
 
         fun getOutputsForBagType(bagType: LootBagType): List<ItemStack> {
             val cached = runtimeOutputs[bagType]
-            if (cached != null && cached.isNotEmpty()) {
-                return cached
-            }
-
+            if (cached != null && cached.isNotEmpty()) return cached
             queueGenerationIfNeeded(bagType)
             return emptyList()
         }
 
         private fun queueGenerationIfNeeded(bagType: LootBagType) {
-            if (!pendingBags.add(bagType)) {
-                return
-            }
-
+            if (!pendingBags.add(bagType)) return
             val serverLevel = resolveServerLevel()
             if (serverLevel == null) {
                 pendingBags.remove(bagType)
                 return
             }
 
-            // Run on the server thread to avoid world random/threading violations.
             serverLevel.server.execute {
                 val generated = generatePotentialLootNow(bagType, serverLevel)
                 if (generated.isNotEmpty()) {
@@ -75,7 +74,6 @@ class LootBagsJEIPlugin : IModPlugin {
         private fun generatePotentialLootNow(bagType: LootBagType, serverLevel: ServerLevel): List<ItemStack> {
             return try {
                 val seen = linkedMapOf<String, ItemStack>()
-                // Large sample count improves JEI reverse-lookup coverage for rare drops.
                 repeat(4000) {
                     bagType.lootGenerator.generateLoot(
                         serverLevel,
@@ -101,20 +99,38 @@ class LootBagsJEIPlugin : IModPlugin {
     override fun getPluginUid(): ResourceLocation = PLUGIN_UID
 
     override fun registerCategories(registration: IRecipeCategoryRegistration) {
-        registration.addRecipeCategories(LootBagRecipeCategory(registration.jeiHelpers.guiHelper))
+        val guiHelper = registration.jeiHelpers.guiHelper
+
+        // Create a unique category and RecipeType for every entry in the enum
+        for (bagType in LootBagType.entries) {
+            val typeId = bagType.name.lowercase()
+            val recipeType = RecipeType.create("lootbags", "${typeId}_drops", LootBagRecipe::class.java)
+            
+            RECIPE_TYPES[bagType] = recipeType
+            
+            // Register category instance with its specific type and icon
+            registration.addRecipeCategories(
+                LootBagRecipeCategory(guiHelper, bagType, recipeType)
+            )
+        }
     }
 
     override fun registerRecipes(registration: IRecipeRegistration) {
-        val recipes = mutableListOf<LootBagRecipe>()
-        val pageSize = 20
+        val pageSize = 24 // Adjusted to match 6x4 or similar grid
+        
         for (bagType in LootBagType.entries) {
+            val recipeType = RECIPE_TYPES[bagType] ?: continue
+            val bagRecipes = mutableListOf<LootBagRecipe>()
+            
             val outputs = getOrGenerateOutputs(bagType)
             val totalPages = maxOf(1, (maxOf(1, outputs.size) + pageSize - 1) / pageSize)
+
             for (page in 0 until totalPages) {
                 val from = page * pageSize
                 val to = minOf(from + pageSize, outputs.size)
                 val pageOutputs = if (outputs.isEmpty()) emptyList() else outputs.subList(from, to)
-                recipes.add(
+
+                bagRecipes.add(
                     LootBagRecipe(
                         bagType = bagType,
                         bag = ItemStack(bagType.asItem()),
@@ -124,9 +140,10 @@ class LootBagsJEIPlugin : IModPlugin {
                     )
                 )
             }
+            
+            // Add the recipes specifically to this bag's unique RecipeType
+            registration.addRecipes(recipeType, bagRecipes)
         }
-
-        registration.addRecipes(LootBagRecipeCategory.TYPE, recipes)
     }
 
     private fun getOrGenerateOutputs(bagType: LootBagType): List<ItemStack> {

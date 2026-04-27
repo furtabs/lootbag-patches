@@ -14,23 +14,32 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 
-class LootBagRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<LootBagRecipe> {
+// The constructor now matches the 3 arguments being passed from your Plugin class
+class LootBagRecipeCategory(
+    guiHelper: IGuiHelper, 
+    private val bagType: LootBagType, 
+    private val recipeType: RecipeType<LootBagRecipe>
+) : IRecipeCategory<LootBagRecipe> {
+
     companion object {
-        val TYPE: RecipeType<LootBagRecipe> = RecipeType.create("lootbags", "loot_bag_items", LootBagRecipe::class.java)
+        // We REMOVED 'val TYPE' from here because each bag now has its own unique type
         private const val RECIPE_WIDTH = 160
-        private const val RECIPE_HEIGHT = 122
+        private const val RECIPE_HEIGHT = 125
         private const val COLUMNS = 6
-        private const val OUTPUT_START_X = 2
+        private const val OUTPUT_START_X = 3
         private const val OUTPUT_START_Y = 30
-        private const val SLOT_SPACING_X = 28
+        private const val SLOT_SPACING_X = 26
         private const val SLOT_SPACING_Y = 20
     }
 
-    private val title: Component = Component.literal("Loot Bag Drops")
-    private val icon: IDrawable = guiHelper.createDrawableItemStack(ItemStack(LootBagType.COMMON.asItem()))
+    // Dynamic title (e.g., "Common Loot Bag")
+    private val title: Component = Component.literal("${bagType.name.lowercase().replaceFirstChar { it.uppercase() }} Loot Bag")
+    
+    // Dynamic icon (Uses the specific bag item for this tab)
+    private val icon: IDrawable = guiHelper.createDrawableItemStack(ItemStack(bagType.asItem()))
     private val background: IDrawable = guiHelper.createBlankDrawable(RECIPE_WIDTH, RECIPE_HEIGHT)
 
-    override fun getRecipeType(): RecipeType<LootBagRecipe> = TYPE
+    override fun getRecipeType(): RecipeType<LootBagRecipe> = recipeType
 
     override fun getTitle(): Component = title
 
@@ -44,9 +53,9 @@ class LootBagRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<LootBagReci
 
     override fun setRecipe(builder: IRecipeLayoutBuilder, recipe: LootBagRecipe, focuses: IFocusGroup) {
         // Input slot (top center) - the loot bag
-        builder.addSlot(RecipeIngredientRole.INPUT, 70, 5).addItemStack(recipe.bag)
+        builder.addSlot(RecipeIngredientRole.INPUT, 72, 5).addItemStack(recipe.bag)
 
-        // Native JEI output slots so hover/click/recipe lookup works as expected.
+        // Output slots
         for ((index, stack) in recipe.outputs.withIndex()) {
             val row = index / COLUMNS
             val col = index % COLUMNS
@@ -65,6 +74,7 @@ class LootBagRecipeCategory(guiHelper: IGuiHelper) : IRecipeCategory<LootBagReci
     ) {
         val mc = Minecraft.getInstance()
         val pageText = Component.literal("Page ${recipe.pageIndex}/${recipe.totalPages}")
-        guiGraphics.drawString(mc.font, pageText, 8, 108, 0x404040, false)
+        // Draw page text at the bottom
+        guiGraphics.drawString(mc.font, pageText, 5, 115, 0x404040, false)
     }
 }
