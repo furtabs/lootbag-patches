@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "lootbags:epic_loot_bag"
+    },
+    {
+      "item": "lootbags:epic_loot_bag"
+    },
+    {
+      "item": "lootbags:epic_loot_bag"
+    },
+    {
+      "item": "lootbags:epic_loot_bag"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "lootbags:legendary_loot_bag"
+  }
+}

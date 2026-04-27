@@ -1,10 +1,10 @@
 modLoader="kotlinforforge"
-loaderVersion="[4,)"
+loaderVersion="[5,)"
 license="MIT"
 
 [[mods]]
 modId="lootbags"
-version="3.0.0.0"
+version="3.1.0.1"
 displayName="Loot Bags: Patched"
 credits="Mina the Engineer (Malorolam), the original author and all contributors to the original mod, and all contributors to this mod."
 authors="src_resources, furtabs"
@@ -12,14 +12,14 @@ description='''Add loot pouches to entity drops.'''
 logoFile = "logo.png"
 
 [[dependencies.lootbags]]
-    modId="forge"
+    modId="neoforge"
     mandatory=true
-    versionRange="[47.1.3,)"
+    versionRange="[21.1.0,)"
     ordering="NONE"
     side="BOTH"
 [[dependencies.lootbags]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.20.1, 1.21)"
+    versionRange="[1.21.1, 1.22)"
     ordering="NONE"
     side="BOTH"

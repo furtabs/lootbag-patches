@@ -1,7 +1,7 @@
 package com.furtabs.lootbags.util
 
 import net.minecraft.world.item.ItemStack
-import net.minecraftforge.items.IItemHandler
+import net.neoforged.neoforge.items.IItemHandler
 
 class OutputOnlyItemHandler(
     private val itemHandler: IItemHandler,

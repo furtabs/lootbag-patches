@@ -84,5 +84,5 @@ class BagStorageMenu(
 }
 
 private fun sendSelectLootBagTypePacketToServer(value: Int) {
-    ModNetworks.CHANNEL.sendToServer(ServerboundSelectLootBagTypePacket(value))
+    ModNetworks.sendSelectLootBagTypePacket(ServerboundSelectLootBagTypePacket(value))
 }

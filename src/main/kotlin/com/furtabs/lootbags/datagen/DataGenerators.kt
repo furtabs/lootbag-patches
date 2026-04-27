@@ -2,12 +2,12 @@ package com.furtabs.lootbags.datagen
 
 import net.minecraft.data.loot.LootTableProvider
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets
-import net.minecraftforge.data.event.GatherDataEvent
-import net.minecraftforge.eventbus.api.SubscribeEvent
-import net.minecraftforge.fml.common.Mod
+import net.neoforged.neoforge.data.event.GatherDataEvent
+import net.neoforged.bus.api.SubscribeEvent
+import net.neoforged.fml.common.EventBusSubscriber
 import com.furtabs.lootbags.LootBags
 
-@Mod.EventBusSubscriber(modid = LootBags.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = LootBags.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 object DataGenerators {
     @SubscribeEvent
     fun gatherData(event: GatherDataEvent) {
@@ -23,20 +23,21 @@ object DataGenerators {
                     setOf(),
                     listOf(
                         LootTableProvider.SubProviderEntry(
-                            { ModBlockLootTableProvider() },
+                            { registries -> ModBlockLootTableProvider(registries) },
                             LootContextParamSets.BLOCK
                         )
-                    )
+                    ),
+                    lookup
                 )
             )
-            generator.addProvider(true, ModRecipeProvider(packOutput))
+            generator.addProvider(true, ModRecipeProvider(packOutput, lookup))
             val blockTags = ModBlockTagsProvider(packOutput, lookup, existing)
             generator.addProvider(true, blockTags)
             generator.addProvider(
                 true,
                 ModItemTagsProvider(packOutput, lookup, blockTags.contentsGetter(), existing)
             )
-            generator.addProvider(true, ModGlobalLootModifierProvider(packOutput))
+            generator.addProvider(true, ModGlobalLootModifierProvider(packOutput, lookup))
         }
     }
 }

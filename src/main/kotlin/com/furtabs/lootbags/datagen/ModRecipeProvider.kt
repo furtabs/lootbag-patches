@@ -3,6 +3,7 @@ package com.furtabs.lootbags.datagen
 import net.minecraft.data.PackOutput
 import net.minecraft.data.recipes.RecipeCategory
 import net.minecraft.data.recipes.RecipeProvider
+import net.minecraft.data.recipes.RecipeOutput
 import net.minecraft.data.recipes.ShapedRecipeBuilder
 import net.minecraft.data.recipes.ShapelessRecipeBuilder
 import net.minecraft.world.item.Items
@@ -10,15 +11,14 @@ import net.minecraft.world.level.block.Blocks
 import com.furtabs.lootbags.LootBags
 import com.furtabs.lootbags.block.ModBlocks
 import com.furtabs.lootbags.util.LootBagType
-import java.util.function.Consumer
-import net.minecraft.data.recipes.FinishedRecipe
 import net.minecraft.resources.ResourceLocation
 
 class ModRecipeProvider(
-    output: PackOutput
-) : RecipeProvider(output) {
+    output: PackOutput,
+    registries: java.util.concurrent.CompletableFuture<net.minecraft.core.HolderLookup.Provider>
+) : RecipeProvider(output, registries) {
 
-    override fun buildRecipes(out: Consumer<FinishedRecipe>) {
+    override fun buildRecipes(out: RecipeOutput) {
         ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ModBlocks.LOOT_RECYCLER.get())
             .pattern(" A ")
             .pattern("CBC")
@@ -66,7 +66,7 @@ class ModRecipeProvider(
                         .unlockedBy("has_${otherType.itemId}", has(otherType.asItem()))
                         .save(
                             out,
-                            ResourceLocation(
+                            ResourceLocation.fromNamespaceAndPath(
                                 LootBags.MOD_ID,
                                 "${type.itemId}_from_${otherType.itemId}"
                             )

@@ -6,9 +6,10 @@ import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.ItemStack
-import net.minecraftforge.eventbus.api.IEventBus
-import net.minecraftforge.registries.DeferredRegister
-import net.minecraftforge.registries.RegistryObject
+import net.neoforged.bus.api.IEventBus
+import net.neoforged.neoforge.registries.DeferredHolder
+import net.neoforged.neoforge.registries.DeferredRegister
+import java.util.function.Supplier
 
 object ModCreativeModeTabs {
     @JvmField
@@ -16,8 +17,8 @@ object ModCreativeModeTabs {
         DeferredRegister.create(Registries.CREATIVE_MODE_TAB, LootBags.MOD_ID)
 
     @JvmField
-    val LOOT_BAGS_TAB: RegistryObject<CreativeModeTab> =
-        CREATIVE_MODE_TAB.register("loot_bags_tab") {
+    val LOOT_BAGS_TAB: DeferredHolder<CreativeModeTab, CreativeModeTab> =
+        CREATIVE_MODE_TAB.register("loot_bags_tab", Supplier {
             CreativeModeTab.builder()
                 .icon { ItemStack(ModItems.COMMON_LOOT_BAG.get()) }
                 .title(Component.translatable("creativetab.lootbags.loot_bags_tab"))
@@ -33,7 +34,7 @@ object ModCreativeModeTabs {
                     output.accept(ModBlocks.BAG_STORAGE.get())
                 }
                 .build()
-        }
+        })
 
     fun register(eventBus: IEventBus) {
         CREATIVE_MODE_TAB.register(eventBus)

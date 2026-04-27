@@ -3,14 +3,14 @@ package com.furtabs.lootbags.event
 import net.minecraft.util.Mth
 import net.minecraft.util.RandomSource
 import net.minecraft.world.item.ItemStack
-import net.minecraftforge.event.entity.living.LivingDropsEvent
-import net.minecraftforge.eventbus.api.SubscribeEvent
-import net.minecraftforge.fml.common.Mod
+import net.neoforged.neoforge.event.entity.living.LivingDropsEvent
+import net.neoforged.bus.api.SubscribeEvent
+import net.neoforged.fml.common.EventBusSubscriber
 import com.furtabs.lootbags.LootBags
 import com.furtabs.lootbags.util.LootBagType
 import com.furtabs.lootbags.util.newItemEntitiesForDropping
 
-@Mod.EventBusSubscriber(modid = LootBags.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = LootBags.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
 object ModEvents {
     @SubscribeEvent
     fun onLivingDrops(event: LivingDropsEvent) {

@@ -2,11 +2,11 @@ package com.furtabs.lootbags.block.custom
 
 import com.furtabs.lootbags.block.entity.ModBlockEntities
 import com.furtabs.lootbags.block.entity.custom.LootRecyclerBlockEntity
+import com.mojang.serialization.MapCodec
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.Containers
-import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.context.BlockPlaceContext
@@ -23,8 +23,6 @@ import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.BlockStateProperties
 import net.minecraft.world.level.block.state.properties.DirectionProperty
 import net.minecraft.world.phys.BlockHitResult
-import net.minecraftforge.common.capabilities.ForgeCapabilities
-import net.minecraftforge.network.NetworkHooks
 
 class LootRecyclerBlock(
     properties: Properties = Properties.of()
@@ -33,8 +31,11 @@ class LootRecyclerBlock(
 ) : LootBagEntityBlock(properties) {
 
     companion object {
+        val CODEC: MapCodec<LootRecyclerBlock> = simpleCodec(::LootRecyclerBlock)
         val FACING: DirectionProperty = BlockStateProperties.HORIZONTAL_FACING
     }
+
+    override fun codec(): MapCodec<out LootBagEntityBlock> = CODEC
 
     init {
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH))
@@ -48,18 +49,17 @@ class LootRecyclerBlock(
         return defaultBlockState().setValue(FACING, context.horizontalDirection.opposite)
     }
 
-    override fun use(
+    override fun useWithoutItem(
         state: BlockState,
         level: Level,
         pos: BlockPos,
         player: Player,
-        hand: InteractionHand,
         hit: BlockHitResult
     ): InteractionResult {
         if (!level.isClientSide) {
             val blockEntity = level.getBlockEntity(pos)
             if (blockEntity is LootRecyclerBlockEntity) {
-                NetworkHooks.openScreen(player as ServerPlayer, blockEntity, pos)
+                (player as? ServerPlayer)?.openMenu(blockEntity) { buf -> buf.writeBlockPos(pos) }
             } else {
                 throw IllegalStateException("Our Container provider is missing!")
             }
@@ -88,10 +88,8 @@ class LootRecyclerBlock(
         if (state.block != newState.block) {
             val blockEntity = level.getBlockEntity(pos)
             if (blockEntity is LootRecyclerBlockEntity) {
-                blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent { handler ->
-                    for (i in 0 until handler.slots) {
-                        Containers.dropItemStack(level, pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), handler.getStackInSlot(i))
-                    }
+                for (i in 0 until blockEntity.itemHandler.slots) {
+                    Containers.dropItemStack(level, pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), blockEntity.itemHandler.getStackInSlot(i))
                 }
                 level.updateNeighbourForOutputSignal(pos, this)
             }

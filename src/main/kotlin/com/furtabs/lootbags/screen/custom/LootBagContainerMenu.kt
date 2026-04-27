@@ -7,8 +7,8 @@ import net.minecraft.world.inventory.ContainerData
 import net.minecraft.world.inventory.MenuType
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
-import net.minecraftforge.items.IItemHandler
-import net.minecraftforge.items.SlotItemHandler
+import net.neoforged.neoforge.items.IItemHandler
+import net.neoforged.neoforge.items.SlotItemHandler
 import com.furtabs.lootbags.util.LootBagType
 import com.furtabs.lootbags.util.addPlayerHotbarSlots
 import com.furtabs.lootbags.util.addPlayerInventorySlots
@@ -84,7 +84,7 @@ abstract class LootBagContainerMenu(
                 // preventing the item stack from being put into fake slots.)
                 if (!isOutputPlaceholderSlot(slot)) {
                     val itemStack = slot.item
-                    if (!itemStack.isEmpty && ItemStack.isSameItemSameTags(stack, itemStack)) {
+                    if (!itemStack.isEmpty && ItemStack.isSameItemSameComponents(stack, itemStack)) {
                         val j = itemStack.count + stack.count
                         val k = slot.getMaxStackSize(itemStack)
                         if (j <= k) {

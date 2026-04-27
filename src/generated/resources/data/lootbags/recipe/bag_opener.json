@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:copper_ingot"
+    },
+    "B": {
+      "item": "minecraft:deepslate"
+    },
+    "C": {
+      "item": "minecraft:diamond"
+    },
+    "D": {
+      "item": "minecraft:blast_furnace"
+    }
+  },
+  "pattern": [
+    "ABA",
+    "CDC",
+    "BBB"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lootbags:bag_opener"
+  }
+}

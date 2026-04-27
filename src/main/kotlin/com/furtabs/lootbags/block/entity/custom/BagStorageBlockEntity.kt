@@ -10,7 +10,7 @@ import com.furtabs.lootbags.util.asLootBagType
 import com.furtabs.lootbags.util.setChangedAndUpdateBlock
 import kotlin.math.min
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
+import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.Packet
@@ -25,10 +25,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraftforge.common.capabilities.Capability
-import net.minecraftforge.common.capabilities.ForgeCapabilities
-import net.minecraftforge.common.util.LazyOptional
-import net.minecraftforge.items.ItemStackHandler
+import net.neoforged.neoforge.items.ItemStackHandler
 
 class BagStorageBlockEntity(
     pos: BlockPos,
@@ -49,15 +46,7 @@ class BagStorageBlockEntity(
         override fun isItemValid(slot: Int, stack: ItemStack): Boolean {
             if (!isInputSlot(slot)) return false
             if (stack.item !is LootBagItem) return false
-            
-            val tag = stack.tag ?: return true
-            
-            // 1. Check for the 'opened' flag
-            if (tag.getBoolean("opened")) return false
-            
-            // 2. Check for stored loot list (NBT ID 9 is ListTag)
-            if (tag.contains("Items", 9)) return false
-            
+
             return true
         }
 
@@ -100,11 +89,6 @@ class BagStorageBlockEntity(
     val inputItemHandler = InputOnlyItemHandler(itemHandler, INPUT_SLOT)
     val outputItemHandler = OutputOnlyItemHandler(itemHandler, OUTPUT_SLOT)
 
-    private val lazyInputCap: LazyOptional<net.minecraftforge.items.IItemHandler> =
-        LazyOptional.of { inputItemHandler }
-    private val lazyOutputCap: LazyOptional<net.minecraftforge.items.IItemHandler> =
-        LazyOptional.of { outputItemHandler }
-
     var storedBagAmount: Int = 0
     private var targetBagType: LootBagType = LootBagType.COMMON
     private val targetBagAmount: Int
@@ -134,16 +118,16 @@ class BagStorageBlockEntity(
     override fun createMenu(containerId: Int, playerInventory: Inventory, player: Player): AbstractContainerMenu =
         BagStorageMenu(containerId, playerInventory, player.level(), this, data)
 
-    override fun saveAdditional(tag: CompoundTag) {
-        tag.put("inventory", itemHandler.serializeNBT())
+    override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        tag.put("inventory", itemHandler.serializeNBT(registries))
         tag.putInt("stored_bag_amount", storedBagAmount)
         tag.putInt("target_bag_type", targetBagType.ordinal)
-        super.saveAdditional(tag)
+        super.saveAdditional(tag, registries)
     }
 
-    override fun load(tag: CompoundTag) {
-        super.load(tag)
-        itemHandler.deserializeNBT(tag.getCompound("inventory"))
+    override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        super.loadAdditional(tag, registries)
+        itemHandler.deserializeNBT(registries, tag.getCompound("inventory"))
         storedBagAmount = tag.getInt("stored_bag_amount")
         val targetBagTypeOrdinal = tag.getInt("target_bag_type")
         if (targetBagTypeOrdinal in LootBagType.entries.indices) {
@@ -177,26 +161,10 @@ class BagStorageBlockEntity(
     override fun getUpdatePacket(): Packet<ClientGamePacketListener> =
         ClientboundBlockEntityDataPacket.create(this)
 
-    override fun getUpdateTag(): CompoundTag = saveWithoutMetadata()
+    override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag = saveWithoutMetadata(registries)
 
     private fun setChangedAndUpdateBlock() {
         setChangedAndUpdateBlock(level)
     }
 
-    override fun <T> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
-        if (cap == ForgeCapabilities.ITEM_HANDLER) {
-            return if (side == Direction.DOWN) {
-                lazyOutputCap.cast()
-            } else {
-                lazyInputCap.cast()
-            }
-        }
-        return super.getCapability(cap, side)
-    }
-
-    override fun invalidateCaps() {
-        super.invalidateCaps()
-        lazyInputCap.invalidate()
-        lazyOutputCap.invalidate()
-    }
 }

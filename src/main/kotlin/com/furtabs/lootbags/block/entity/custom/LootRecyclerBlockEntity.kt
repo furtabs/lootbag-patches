@@ -5,7 +5,7 @@ import com.furtabs.lootbags.item.custom.LootBagItem
 import com.furtabs.lootbags.screen.custom.LootRecyclerMenu
 import com.furtabs.lootbags.util.*
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
+import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.Packet
@@ -20,10 +20,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraftforge.common.capabilities.Capability
-import net.minecraftforge.common.capabilities.ForgeCapabilities
-import net.minecraftforge.common.util.LazyOptional
-import net.minecraftforge.items.ItemStackHandler
+import net.neoforged.neoforge.items.ItemStackHandler
 import kotlin.math.min
 
 class LootRecyclerBlockEntity(pos: BlockPos, blockState: BlockState) : 
@@ -50,7 +47,6 @@ class LootRecyclerBlockEntity(pos: BlockPos, blockState: BlockState) :
         override fun isItemValid(slot: Int, stack: ItemStack): Boolean {
             if (slot != INPUT_SLOT) return false
             if (LootValueRegistry.getValue(stack) <= 0.0) return false
-            if (stack.item is LootBagItem && stack.tag?.getBoolean("opened") == true) return false
             return true
         }
 
@@ -71,9 +67,6 @@ class LootRecyclerBlockEntity(pos: BlockPos, blockState: BlockState) :
             stacks[OUTPUT_SLOT] = if (displayAmount > 0) ItemStack(item, displayAmount) else ItemStack.EMPTY
         }
     }
-
-    private val lazyInputCap = LazyOptional.of { InputOnlyItemHandler(itemHandler, INPUT_SLOT) }
-    private val lazyOutputCap = LazyOptional.of { OutputOnlyItemHandler(itemHandler, OUTPUT_SLOT) }
 
     private val data = object : ContainerData {
         override fun get(index: Int): Int = if (index == ContainerDataType.STORED_BAG_AMOUNT.ordinal) storedBagAmount else 0
@@ -114,34 +107,21 @@ class LootRecyclerBlockEntity(pos: BlockPos, blockState: BlockState) :
         itemHandler.setStackInSlot(OUTPUT_SLOT, if (displayAmount > 0) ItemStack(item, displayAmount) else ItemStack.EMPTY)
     }
 
-    override fun saveAdditional(tag: CompoundTag) {
-        tag.put("inventory", itemHandler.serializeNBT())
+    override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        tag.put("inventory", itemHandler.serializeNBT(registries))
         tag.putInt("stored_bags", storedBagAmount)
         tag.putDouble("accumulation", accumulation)
-        super.saveAdditional(tag)
+        super.saveAdditional(tag, registries)
     }
 
-    override fun load(tag: CompoundTag) {
-        super.load(tag)
-        itemHandler.deserializeNBT(tag.getCompound("inventory"))
+    override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        super.loadAdditional(tag, registries)
+        itemHandler.deserializeNBT(registries, tag.getCompound("inventory"))
         storedBagAmount = tag.getInt("stored_bags")
         accumulation = tag.getDouble("accumulation")
     }
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener> = ClientboundBlockEntityDataPacket.create(this)
-    override fun getUpdateTag(): CompoundTag = saveWithoutMetadata()
+    override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag = saveWithoutMetadata(registries)
     private fun setChangedAndUpdateBlock() = setChangedAndUpdateBlock(level)
-
-    override fun <T> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
-        if (cap == ForgeCapabilities.ITEM_HANDLER) {
-            return if (side == Direction.DOWN) lazyOutputCap.cast() else lazyInputCap.cast()
-        }
-        return super.getCapability(cap, side)
-    }
-
-    override fun invalidateCaps() {
-        super.invalidateCaps()
-        lazyInputCap.invalidate()
-        lazyOutputCap.invalidate()
-    }
 }

@@ -21,11 +21,8 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.storage.loot.LootParams
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams
 import net.minecraft.world.phys.Vec3
-import net.minecraft.core.Direction
-import net.minecraftforge.common.capabilities.Capability
-import net.minecraftforge.common.capabilities.ForgeCapabilities
-import net.minecraftforge.common.util.LazyOptional
-import net.minecraftforge.items.ItemStackHandler
+import net.minecraft.core.HolderLookup
+import net.neoforged.neoforge.items.ItemStackHandler
 import com.furtabs.lootbags.block.entity.ModBlockEntities
 import com.furtabs.lootbags.item.ModItems
 import com.furtabs.lootbags.item.custom.LootBagItem
@@ -68,11 +65,6 @@ class BagOpenerBlockEntity(
         }
     }
 
-    private val lazyInputCap: LazyOptional<net.minecraftforge.items.IItemHandler> =
-        LazyOptional.of { inputItemHandler }
-    private val lazyOutputCap: LazyOptional<net.minecraftforge.items.IItemHandler> =
-        LazyOptional.of { outputItemHandler }
-
     private var progress = 0
     private var maxProgress = 60
     private val data = object : ContainerData {
@@ -109,18 +101,18 @@ class BagOpenerBlockEntity(
         }
     }
 
-    override fun saveAdditional(tag: CompoundTag) {
-        tag.put("input_inventory", inputItemHandler.serializeNBT())
-        tag.put("output_inventory", outputItemHandler.serializeNBT())
+    override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        tag.put("input_inventory", inputItemHandler.serializeNBT(registries))
+        tag.put("output_inventory", outputItemHandler.serializeNBT(registries))
         tag.putInt("progress", progress)
         tag.putInt("max_progress", maxProgress)
-        super.saveAdditional(tag)
+        super.saveAdditional(tag, registries)
     }
 
-    override fun load(tag: CompoundTag) {
-        super.load(tag)
-        inputItemHandler.deserializeNBT(tag.getCompound("input_inventory"))
-        outputItemHandler.deserializeNBT(tag.getCompound("output_inventory"))
+    override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        super.loadAdditional(tag, registries)
+        inputItemHandler.deserializeNBT(registries, tag.getCompound("input_inventory"))
+        outputItemHandler.deserializeNBT(registries, tag.getCompound("output_inventory"))
         progress = tag.getInt("progress")
         maxProgress = tag.getInt("max_progress")
     }
@@ -175,21 +167,14 @@ class BagOpenerBlockEntity(
         val level = this.level ?: return
         val serverLevel = level as? ServerLevel ?: return
 
-        val loots: List<ItemStack> = if (inputItemStack.hasTag() && inputItemStack.tag!!.contains("Items")) {
-            // This bag was already opened/viewed; extract the existing items
-            getContentsFromNBT(inputItemStack)
-        } else {
-            // This is a "fresh" bag; generate loot normally
-            val bagType = bagItem.asLootBagType()
-            bagType.lootGenerator.generateLoot(
-                serverLevel,
-                LootParams.Builder(serverLevel)
-                    .withParameter(LootContextParams.BLOCK_STATE, blockState)
-                    .withParameter(LootContextParams.BLOCK_ENTITY, this)
-                    .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(blockPos)),
-                maxStacks = 5
-            )
-        }
+        val loots: List<ItemStack> = bagItem.asLootBagType().lootGenerator.generateLoot(
+            serverLevel,
+            LootParams.Builder(serverLevel)
+                .withParameter(LootContextParams.BLOCK_STATE, blockState)
+                .withParameter(LootContextParams.BLOCK_ENTITY, this)
+                .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(blockPos)),
+            maxStacks = 5
+        )
 
         if (loots.isNotEmpty()) {
             val extracted = inputItemHandler.extractItem(inputSlot, 1, false)
@@ -205,13 +190,7 @@ class BagOpenerBlockEntity(
     }
 
     private fun getContentsFromNBT(stack: ItemStack): List<ItemStack> {
-        val items = mutableListOf<ItemStack>()
-        val tag = stack.tag ?: return items
-        val list = tag.getList("Items", 10) // 10 is the ID for CompoundTag
-        for (i in 0 until list.size) {
-            items.add(ItemStack.of(list.getCompound(i)))
-        }
-        return items
+        return emptyList()
     }
 
     private fun putIntoOutputSlots(stack: ItemStack): Boolean {
@@ -223,7 +202,7 @@ class BagOpenerBlockEntity(
                 remainingStack.count = 0
                 break
             }
-            if (ItemStack.isSameItemSameTags(remainingStack, currentStack)) {
+            if (ItemStack.isSameItemSameComponents(remainingStack, currentStack)) {
                 val maxCapacity = currentStack.maxStackSize
                 val amountToPutInto = maxCapacity - currentStack.count
                 val remainingAfterPut = remainingStack.count - amountToPutInto
@@ -248,22 +227,10 @@ class BagOpenerBlockEntity(
     override fun getUpdatePacket(): Packet<ClientGamePacketListener> =
         ClientboundBlockEntityDataPacket.create(this)
 
-    override fun getUpdateTag(): CompoundTag = saveWithoutMetadata()
+    override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag = saveWithoutMetadata(registries)
 
     private fun setChangedAndUpdateBlock() {
         setChangedAndUpdateBlock(level)
     }
 
-    override fun <T> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
-        if (cap == ForgeCapabilities.ITEM_HANDLER) {
-            return if (side == Direction.DOWN) lazyOutputCap.cast() else lazyInputCap.cast()
-        }
-        return super.getCapability(cap, side)
-    }
-
-    override fun invalidateCaps() {
-        super.invalidateCaps()
-        lazyInputCap.invalidate()
-        lazyOutputCap.invalidate()
-    }
 }

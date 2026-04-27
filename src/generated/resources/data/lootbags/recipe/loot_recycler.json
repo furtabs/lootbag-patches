@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:diamond"
+    },
+    "B": {
+      "item": "minecraft:grindstone"
+    },
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "D": {
+      "item": "minecraft:deepslate"
+    }
+  },
+  "pattern": [
+    " A ",
+    "CBC",
+    "DDD"
+  ],
+  "result": {
+    "count": 1,
+    "id": "lootbags:loot_recycler"
+  }
+}

@@ -1,7 +1,7 @@
 package com.furtabs.lootbags.block.entity.custom
 
 import net.minecraft.world.item.ItemStack
-import net.minecraftforge.items.ItemStackHandler
+import net.neoforged.neoforge.items.ItemStackHandler
 import com.furtabs.lootbags.item.ModItems
 import com.furtabs.lootbags.util.LootBagType
 

@@ -1,23 +1,29 @@
 package com.furtabs.lootbags.util
 
+import net.minecraft.core.registries.Registries
+import net.minecraft.resources.ResourceKey
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
-import net.minecraft.util.Mth
 import net.minecraft.util.RandomSource
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.level.storage.loot.LootDataId
-import net.minecraft.world.level.storage.loot.LootDataType
 import net.minecraft.world.level.storage.loot.LootParams
 import net.minecraft.world.level.storage.loot.LootTable
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Constants and Weights for Loot Generation
+ */
 const val MAX_LOOT_BAG_ITEM_STACKS: Int = 5
 private val STACK_COUNT_WEIGHTS: IntArray = intArrayOf(5, 4, 3, 2, 1)
 
-/** Cache to prevent repeated string parsing on every loot roll. */
+/** Cache to prevent repeated string parsing and tier calculation on every loot roll. */
 private val TIER_CACHE = ConcurrentHashMap<ResourceLocation, Int>()
 
+/**
+ * Weighted random roll to determine how many item stacks from the loot table
+ * should actually be given to the player.
+ */
 fun rollLootBagDisplayedItemCount(random: RandomSource): Int {
     val weights = STACK_COUNT_WEIGHTS
     val totalWeight = weights.sum()
@@ -29,97 +35,65 @@ fun rollLootBagDisplayedItemCount(random: RandomSource): Int {
     return 1
 }
 
-class LootGenerator(private val bagType: LootBagType) {
+class LootGenerator(private val bagType: LootBagType, private val bagTier: Int) {
 
-    fun generateLoot(
+fun generateLoot(
         level: ServerLevel,
         lootParamsBuilder: LootParams.Builder = LootParams.Builder(level),
         maxStacks: Int = MAX_LOOT_BAG_ITEM_STACKS
     ): List<ItemStack> {
-        val rolledCount = rollLootBagDisplayedItemCount(level.random)
+        val random = level.random
+
+        // 1. Pick one loot table ID from known vanilla chest tables.
+        val selectedId = pickLootTableId(VANILLA_CHEST_TABLES, random, bagTier)
+
+        // 2. Create the ResourceKey and fetch the actual table using reloadable registries.
+        val tableKey = ResourceKey.create(Registries.LOOT_TABLE, selectedId)
+        val registries = level.server.reloadableRegistries()
+        val lootTable = registries.getLootTable(tableKey)
+        
+        if (lootTable == LootTable.EMPTY) return emptyList()
+
+        // 3. Generate items
+        val params = lootParamsBuilder.create(LootContextParamSets.CHEST)
+        val allGeneratedItems = lootTable.getRandomItems(params)
+
+        if (allGeneratedItems.isEmpty()) return emptyList()
+
+        // 7. Stack count and shuffle
+        val rolledCount = rollLootBagDisplayedItemCount(random)
         val cap = rolledCount.coerceAtMost(maxStacks)
-        val tier = bagType.rarity.toInt().coerceIn(0, 8)
-
-        return when (bagType) {
-            LootBagType.COMMON -> sampleFromRandomLootTables(
-                level, lootParamsBuilder, cap,
-                luckMin = -1.5f, luckMax = 0.5f, maxTablePicks = 8, bagTier = tier,
-                contentTierMin = 0, contentTierMax = 0
-            )
-            LootBagType.UNCOMMON -> sampleFromRandomLootTables(
-                level, lootParamsBuilder, cap,
-                luckMin = 0.0f, luckMax = 2.0f, maxTablePicks = 16, bagTier = tier,
-                contentTierMin = 0, contentTierMax = 1
-            )
-            LootBagType.RARE -> sampleFromRandomLootTables(
-                level, lootParamsBuilder, cap,
-                luckMin = 1.0f, luckMax = 5.0f, maxTablePicks = 32, bagTier = tier,
-                contentTierMin = 1, contentTierMax = 2
-            )
-            LootBagType.EPIC -> sampleFromRandomLootTables(
-                level, lootParamsBuilder, cap,
-                luckMin = 5.0f, luckMax = 12.0f, maxTablePicks = 48, bagTier = tier,
-                contentTierMin = 2, contentTierMax = 3
-            )
-            LootBagType.LEGENDARY -> sampleFromRandomLootTables(
-                level, lootParamsBuilder, cap,
-                luckMin = 12.0f, luckMax = 30.0f, maxTablePicks = 80, bagTier = tier,
-                contentTierMin = 3, contentTierMax = 4
-            )
+        
+        val shuffled = allGeneratedItems.toMutableList()
+        for (i in shuffled.size - 1 downTo 1) {
+            val j = random.nextInt(i + 1)
+            val temp = shuffled[i]
+            shuffled[i] = shuffled[j]
+            shuffled[j] = temp
         }
+        
+        return shuffled.take(cap)
     }
 }
 
-private fun sampleFromRandomLootTables(
-    level: ServerLevel,
-    lootParamsBuilder: LootParams.Builder,
-    maxStacks: Int,
-    luckMin: Float,
-    luckMax: Float,
-    maxTablePicks: Int,
-    bagTier: Int,
-    contentTierMin: Int,
-    contentTierMax: Int
-): List<ItemStack> {
-    // Purge blocks to keep the loot pool clean and relevant
-    val allIds = level.server.lootData.getKeys(LootDataType.TABLE)
-        .toList()
-        .filter { !it.path.startsWith("blocks/") }
+private val VANILLA_CHEST_TABLES: List<ResourceLocation> = listOf(
+    ResourceLocation.withDefaultNamespace("chests/spawn_bonus_chest"),
+    ResourceLocation.withDefaultNamespace("chests/simple_dungeon"),
+    ResourceLocation.withDefaultNamespace("chests/abandoned_mineshaft"),
+    ResourceLocation.withDefaultNamespace("chests/desert_pyramid"),
+    ResourceLocation.withDefaultNamespace("chests/jungle_temple"),
+    ResourceLocation.withDefaultNamespace("chests/shipwreck_supply"),
+    ResourceLocation.withDefaultNamespace("chests/shipwreck_treasure"),
+    ResourceLocation.withDefaultNamespace("chests/ruined_portal"),
+    ResourceLocation.withDefaultNamespace("chests/nether_bridge"),
+    ResourceLocation.withDefaultNamespace("chests/stronghold_corridor"),
+    ResourceLocation.withDefaultNamespace("chests/stronghold_library"),
+    ResourceLocation.withDefaultNamespace("chests/end_city_treasure"),
+    ResourceLocation.withDefaultNamespace("chests/ancient_city"),
+    ResourceLocation.withDefaultNamespace("chests/bastion_treasure")
+)
 
-    if (allIds.isEmpty()) return emptyList()
-
-    var ids = filterLootTablesByContentTier(allIds, contentTierMin, contentTierMax)
-    
-    if (ids.isEmpty()) ids = allIds
-
-    val random = level.random
-    val result = mutableListOf<ItemStack>()
-    var picks = 0
-    
-    while (result.size < maxStacks && picks < maxTablePicks) {
-        picks++
-        val id = pickLootTableId(ids, random, bagTier)
-        val lootTable = level.server.lootData.getElement(LootDataId(LootDataType.TABLE, id))
-        
-        if (lootTable == null || lootTable === LootTable.EMPTY) continue
-
-        val luck = if (luckMin >= luckMax) luckMax else Mth.randomBetween(random, luckMin, luckMax)
-        val params = lootParamsBuilder.withLuck(luck).create(LootContextParamSets.CHEST)
-        
-        for (stack in lootTable.getRandomItems(params)) {
-            if (result.size >= maxStacks) break
-            if (!stack.isEmpty) {
-                result.add(stack.copy())
-            }
-        }
-    }
-
-    return result
-}
-
-private fun filterLootTablesByContentTier(ids: List<ResourceLocation>, min: Int, max: Int): List<ResourceLocation> {
-    return ids.filter { getOrCacheTier(it) in min..max }
-}
+// --- Logic for Tiering and Biasing ---
 
 private fun getOrCacheTier(id: ResourceLocation): Int {
     return TIER_CACHE.getOrPut(id) { calculateLootTableTier(id) }
@@ -131,7 +105,6 @@ private fun calculateLootTableTier(id: ResourceLocation): Int {
     
     if (ns != "minecraft") return modLootTableContentTier(path)
     
-    // 1.20.1 Archaeology
     if (path.startsWith("archaeology/")) {
         return when {
             path.contains("trail_ruins_rare") -> 3
@@ -182,7 +155,7 @@ private fun modLootTableContentTier(path: String): Int = when {
 }
 
 private fun pickLootTableId(ids: List<ResourceLocation>, random: RandomSource, bagTier: Int): ResourceLocation {
-    if (ids.size <= 1) return ids.firstOrNull() ?: ResourceLocation("minecraft", "empty")
+    if (ids.isEmpty()) return ResourceLocation.withDefaultNamespace("empty")
     
     var total = 0f
     val weights = FloatArray(ids.size)
@@ -201,22 +174,17 @@ private fun pickLootTableId(ids: List<ResourceLocation>, random: RandomSource, b
 }
 
 private fun lootTableTierBias(id: ResourceLocation, bagTier: Int): Float {
+    val tier = getOrCacheTier(id)
     val path = id.path.lowercase()
     
-    if (bagTier == 0) {
-        return if (path.contains("village") || path.contains("fishing/junk")) 5.0f else 1.0f
+    var score = when {
+        tier == bagTier -> 25.0f
+        tier == bagTier - 1 || tier == bagTier + 1 -> 5.0f
+        else -> 0.5f
     }
-
-    var score = 1.0f
-    val t = bagTier.toFloat()
-
-    if (path.contains("chests/")) score += 1.5f * t
-    if (path.contains("treasure") || path.contains("city") || path.contains("bastion")) score += 3.0f * t
     
-    if (bagTier >= 3 && (path.contains("village") || path.contains("spawn_bonus") || path.contains("fishing/junk"))) {
-        score *= 0.05f
-    }
-
+    if (path.contains("chests/")) score *= 2.0f
+    
     return score.coerceIn(0.01f, 200f)
 }
 

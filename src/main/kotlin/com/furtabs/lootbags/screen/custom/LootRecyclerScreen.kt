@@ -7,7 +7,7 @@ import net.minecraft.world.entity.player.Inventory
 import com.furtabs.lootbags.LootBags
 import com.furtabs.lootbags.util.setShaderTexture
 
-private val GUI_TEXTURE: ResourceLocation = ResourceLocation(LootBags.MOD_ID, "textures/gui/loot_recycler_gui.png")
+private val GUI_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(LootBags.MOD_ID, "textures/gui/loot_recycler_gui.png")
 
 class LootRecyclerScreen(
     menu: LootRecyclerMenu,

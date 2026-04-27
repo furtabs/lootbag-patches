@@ -6,33 +6,33 @@ import com.furtabs.lootbags.block.entity.custom.BagOpenerBlockEntity
 import com.furtabs.lootbags.block.entity.custom.BagStorageBlockEntity
 import com.furtabs.lootbags.block.entity.custom.LootRecyclerBlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityType
-import net.minecraftforge.eventbus.api.IEventBus
-import net.minecraftforge.registries.DeferredRegister
-import net.minecraftforge.registries.ForgeRegistries
-import net.minecraftforge.registries.RegistryObject
+import net.neoforged.bus.api.IEventBus
+import net.neoforged.neoforge.registries.DeferredHolder
+import net.neoforged.neoforge.registries.DeferredRegister
+import java.util.function.Supplier
 
 object ModBlockEntities {
     @JvmField
     val BLOCK_ENTITIES: DeferredRegister<BlockEntityType<*>> =
-        DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, LootBags.MOD_ID)
+        DeferredRegister.create(net.minecraft.core.registries.Registries.BLOCK_ENTITY_TYPE, LootBags.MOD_ID)
 
     @JvmField
-    val BAG_STORAGE: RegistryObject<BlockEntityType<BagStorageBlockEntity>> =
-        BLOCK_ENTITIES.register("bag_storage") {
+    val BAG_STORAGE: DeferredHolder<BlockEntityType<*>, BlockEntityType<BagStorageBlockEntity>> =
+        BLOCK_ENTITIES.register("bag_storage", Supplier {
             BlockEntityType.Builder.of(::BagStorageBlockEntity, ModBlocks.BAG_STORAGE.get()).build(null)
-        }
+        })
 
     @JvmField
-    val BAG_OPENER: RegistryObject<BlockEntityType<BagOpenerBlockEntity>> =
-        BLOCK_ENTITIES.register("bag_opener") {
+    val BAG_OPENER: DeferredHolder<BlockEntityType<*>, BlockEntityType<BagOpenerBlockEntity>> =
+        BLOCK_ENTITIES.register("bag_opener", Supplier {
             BlockEntityType.Builder.of(::BagOpenerBlockEntity, ModBlocks.BAG_OPENER.get()).build(null)
-        }
+        })
 
     @JvmField
-    val LOOT_RECYCLER: RegistryObject<BlockEntityType<LootRecyclerBlockEntity>> =
-        BLOCK_ENTITIES.register("loot_recycler") {
+    val LOOT_RECYCLER: DeferredHolder<BlockEntityType<*>, BlockEntityType<LootRecyclerBlockEntity>> =
+        BLOCK_ENTITIES.register("loot_recycler", Supplier {
             BlockEntityType.Builder.of(::LootRecyclerBlockEntity, ModBlocks.LOOT_RECYCLER.get()).build(null)
-        }
+        })
 
     fun register(eventBus: IEventBus) {
         BLOCK_ENTITIES.register(eventBus)

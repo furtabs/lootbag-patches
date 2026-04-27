@@ -9,7 +9,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess
 import net.minecraft.world.inventory.SimpleContainerData
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
-import net.minecraftforge.items.SlotItemHandler
+import net.neoforged.neoforge.items.SlotItemHandler
 import com.furtabs.lootbags.block.ModBlocks
 import com.furtabs.lootbags.block.entity.custom.BagOpenerBlockEntity
 import com.furtabs.lootbags.screen.ModMenuTypes

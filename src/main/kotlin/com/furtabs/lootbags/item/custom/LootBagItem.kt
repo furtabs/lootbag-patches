@@ -21,7 +21,6 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.storage.loot.LootParams
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams
-import net.minecraftforge.network.NetworkHooks
 
 class LootBagItem(
     val type: LootBagType,
@@ -63,12 +62,8 @@ class LootBagItem(
             }
 
             // 4. Open the screen and sync the loot to the client
-            NetworkHooks.openScreen(player, menuProvider) { buf ->
+            player.openMenu(menuProvider) { buf ->
                 buf.writeByte(usedHand.ordinal)
-                // Ensure we write exactly the expected amount of slots to the buffer
-                for (i in 0 until MAX_LOOT_BAG_ITEM_STACKS) {
-                    buf.writeItem(handler.getStackInSlot(i))
-                }
             }
         }
 

@@ -9,7 +9,7 @@ import com.furtabs.lootbags.LootBags
 import com.furtabs.lootbags.util.LootBagType
 import com.furtabs.lootbags.util.setShaderTexture
 
-private val GUI_TEXTURE: ResourceLocation = ResourceLocation(LootBags.MOD_ID, "textures/gui/bag_storage_gui.png")
+private val GUI_TEXTURE: ResourceLocation = ResourceLocation.fromNamespaceAndPath(LootBags.MOD_ID, "textures/gui/bag_storage_gui.png")
 
 class BagStorageScreen(
     menu: BagStorageMenu,

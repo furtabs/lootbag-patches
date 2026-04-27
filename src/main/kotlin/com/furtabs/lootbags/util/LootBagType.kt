@@ -7,27 +7,10 @@ import com.furtabs.lootbags.item.custom.LootBagItem
 import kotlin.math.pow
 
 enum class LootBagType(
-    /**
-     * The identifier of the loot bag type, used as the registry name of the item.
-     */
     val itemId: String,
-    /**
-     * Rarity of the loot bag type, the higher the rarity is, the rarer the loot bag is.
-     */
-    val rarity: UInt,
-    /**
-     * Whether this type of loot bag can be dropped by living entities.
-     *
-     * If set to `false`, it can only be obtained through loot bag storage blocks or by crafting.
-     */
+    val rarity: UInt, // This acts as our "Tier"
     val droppable: Boolean,
-    /**
-     * Whether this type of loot bag is only available in creative mode (neither available in survival nor by crafting).
-     */
     val creativeOnly: Boolean,
-    /**
-     * Chance for this loot bag type to be dropped, from 0.0 to 1.0 inclusive.
-     */
     val dropChance: Double
 ) : ItemLike {
     COMMON("common_loot_bag", 0U, true, false, 0.4),
@@ -37,15 +20,15 @@ enum class LootBagType(
     LEGENDARY("legendary_loot_bag", 4U, true, false, 0.0015625);
 
     companion object {
-        /**
-         * The amount of loot bags required to reach the next rarity level.
-         * (e.g. craft the loot bag of the next rarity level in crafting tables,
-         * get one within the bag storage block, etc.)
-         */
         const val AMOUNT_TO_NEXT_RARITY = 4
+        
+        // Helper for the extension function to avoid repetitive 'when' blocks
+        private val ALL_BAGS by lazy { entries }
     }
 
-    val lootGenerator = LootGenerator(this)
+    // Pass 'rarity.toInt()' as the second argument required by your LootGenerator
+    // Use 'lazy' so it doesn't run until the first time a bag is actually opened
+    val lootGenerator: LootGenerator by lazy { LootGenerator(this, this.rarity.toInt()) }
 
     override fun asItem(): Item = when (this) {
         COMMON -> ModItems.COMMON_LOOT_BAG.get()
@@ -55,22 +38,14 @@ enum class LootBagType(
         LEGENDARY -> ModItems.LEGENDARY_LOOT_BAG.get()
     }
 
-    /**
-     * Calculate the amount factor number which is equivalent to the other loot bag type.
-     *
-     * For example, 1 uncommon loot bag is equivalent to 4 common loot bags, so calling
-     * this method on UNCOMMON with COMMON as the parameter will return `4.0F`, and `0.25F`
-     * vice versa.
-     */
     fun amountFactorEquivalentTo(other: LootBagType): Float =
         AMOUNT_TO_NEXT_RARITY.toFloat().pow(this.rarity.toInt() - other.rarity.toInt())
 }
 
-fun LootBagItem.asLootBagType(): LootBagType = when (this) {
-    ModItems.COMMON_LOOT_BAG.get() -> LootBagType.COMMON
-    ModItems.UNCOMMON_LOOT_BAG.get() -> LootBagType.UNCOMMON
-    ModItems.RARE_LOOT_BAG.get() -> LootBagType.RARE
-    ModItems.EPIC_LOOT_BAG.get() -> LootBagType.EPIC
-    ModItems.LEGENDARY_LOOT_BAG.get() -> LootBagType.LEGENDARY
-    else -> throw IllegalArgumentException("Invalid loot bag item: $this")
+/**
+ * Safely converts a LootBagItem instance to its corresponding Enum type.
+ */
+fun LootBagItem.asLootBagType(): LootBagType {
+    return LootBagType.entries.find { it.asItem() == this }
+        ?: throw IllegalArgumentException("Item $this is not a valid LootBagType!")
 }

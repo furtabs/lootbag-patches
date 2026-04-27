@@ -15,8 +15,8 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.MenuType
 import net.minecraft.world.item.ItemStack
-import net.minecraftforge.items.ItemStackHandler
-import net.minecraftforge.items.SlotItemHandler
+import net.neoforged.neoforge.items.ItemStackHandler
+import net.neoforged.neoforge.items.SlotItemHandler
 
 class OpenLootBagMenu : AbstractContainerMenu {
     val lootHandler: ItemStackHandler
@@ -29,9 +29,6 @@ class OpenLootBagMenu : AbstractContainerMenu {
         val handIdx = buf.readByte().toInt().coerceIn(0, InteractionHand.entries.size - 1)
         usedHand = InteractionHand.entries[handIdx]
         lootHandler = newLootResultHandler()
-        for (i in 0 until MAX_LOOT_BAG_ITEM_STACKS) {
-            lootHandler.setStackInSlot(i, buf.readItem())
-        }
         addSlots(inv)
     }
 

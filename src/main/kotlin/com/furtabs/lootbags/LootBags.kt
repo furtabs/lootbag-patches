@@ -10,16 +10,17 @@ import com.furtabs.lootbags.screen.custom.BagOpenerScreen
 import com.furtabs.lootbags.screen.custom.BagStorageScreen
 import com.furtabs.lootbags.screen.custom.LootRecyclerScreen
 import com.furtabs.lootbags.screen.custom.OpenLootBagScreen
-import net.minecraft.client.gui.screens.MenuScreens
-import net.minecraftforge.api.distmarker.Dist
-import net.minecraftforge.eventbus.api.SubscribeEvent
-import net.minecraftforge.fml.common.Mod
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent
+import net.neoforged.api.distmarker.Dist
+import net.neoforged.bus.api.IEventBus
+import net.neoforged.bus.api.SubscribeEvent
+import net.neoforged.fml.common.Mod
+import net.neoforged.fml.common.EventBusSubscriber
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import thedarkcolour.kotlinforforge.forge.MOD_BUS
+import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 
 @Mod(LootBags.MOD_ID)
 object LootBags {
@@ -29,15 +30,16 @@ object LootBags {
 
     init {
         LOGGER.info("$MOD_ID is loading...")
+        val modBus: IEventBus = MOD_BUS
 
-        MOD_BUS.addListener(::commonSetup)
-        MOD_BUS.addListener(::clientSetup)
+        modBus.addListener(::commonSetup)
+        modBus.addListener(::clientSetup)
 
-        ModCreativeModeTabs.register(MOD_BUS)
-        ModItems.register(MOD_BUS)
-        ModBlocks.register(MOD_BUS)
-        ModBlockEntities.register(MOD_BUS)
-        ModMenuTypes.register(MOD_BUS)
+        ModCreativeModeTabs.register(modBus)
+        ModItems.register(modBus)
+        ModBlocks.register(modBus)
+        ModBlockEntities.register(modBus)
+        ModMenuTypes.register(modBus)
     }
 
     private fun commonSetup(event: FMLCommonSetupEvent) {
@@ -45,11 +47,17 @@ object LootBags {
     }
 
     private fun clientSetup(event: FMLClientSetupEvent) {
-        event.enqueueWork {
-            MenuScreens.register(ModMenuTypes.BAG_STORAGE.get(), ::BagStorageScreen)
-            MenuScreens.register(ModMenuTypes.BAG_OPENER.get(), ::BagOpenerScreen)
-            MenuScreens.register(ModMenuTypes.LOOT_RECYCLER.get(), ::LootRecyclerScreen)
-            MenuScreens.register(ModMenuTypes.OPEN_LOOT_BAG.get(), ::OpenLootBagScreen)
+        // Registered via RegisterMenuScreensEvent below on 1.21.1.
+    }
+
+    @EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = [Dist.CLIENT])
+    object ClientModEvents {
+        @SubscribeEvent
+        fun onRegisterMenuScreens(event: RegisterMenuScreensEvent) {
+            event.register(ModMenuTypes.BAG_STORAGE.get(), ::BagStorageScreen)
+            event.register(ModMenuTypes.BAG_OPENER.get(), ::BagOpenerScreen)
+            event.register(ModMenuTypes.LOOT_RECYCLER.get(), ::LootRecyclerScreen)
+            event.register(ModMenuTypes.OPEN_LOOT_BAG.get(), ::OpenLootBagScreen)
         }
     }
 }

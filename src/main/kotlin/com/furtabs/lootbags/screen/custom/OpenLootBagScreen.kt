@@ -10,7 +10,7 @@ import com.furtabs.lootbags.util.setShaderTexture
 import kotlin.math.max
 
 private val LOOTBAG_GUI_TEXTURE: ResourceLocation =
-    ResourceLocation(LootBags.MOD_ID, "textures/gui/lootbag_gui.png")
+    ResourceLocation.fromNamespaceAndPath(LootBags.MOD_ID, "textures/gui/lootbag_gui.png")
 
 /** Matches the painted area in `lootbag_gui.png` (below this we extend with a flat panel). */
 private const val TEXTURE_BG_HEIGHT: Int = 166

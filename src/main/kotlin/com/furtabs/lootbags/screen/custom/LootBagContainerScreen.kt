@@ -11,7 +11,7 @@ import com.furtabs.lootbags.LootBags
 import com.furtabs.lootbags.util.setShaderTexture
 
 private val BAG_STORAGE_GUI_TEXTURE: ResourceLocation =
-    ResourceLocation(LootBags.MOD_ID, "textures/gui/bag_storage_gui.png")
+    ResourceLocation.fromNamespaceAndPath(LootBags.MOD_ID, "textures/gui/bag_storage_gui.png")
 
 abstract class LootBagContainerScreen<T : LootBagContainerMenu>(
     menu: T,
