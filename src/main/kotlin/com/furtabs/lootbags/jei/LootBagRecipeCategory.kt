@@ -26,8 +26,8 @@ class LootBagRecipeCategory(
         private const val RECIPE_WIDTH = 160
         private const val RECIPE_HEIGHT = 125
         private const val COLUMNS = 6
-        private const val OUTPUT_START_X = 3
-        private const val OUTPUT_START_Y = 30
+        private const val OUTPUT_START_X = 5
+        private const val OUTPUT_START_Y = 25
         private const val SLOT_SPACING_X = 26
         private const val SLOT_SPACING_Y = 20
     }
@@ -63,18 +63,5 @@ class LootBagRecipeCategory(
             val y = OUTPUT_START_Y + row * SLOT_SPACING_Y
             builder.addSlot(RecipeIngredientRole.OUTPUT, x, y).addItemStack(stack)
         }
-    }
-
-    override fun draw(
-        recipe: LootBagRecipe,
-        recipeSlotsView: IRecipeSlotsView,
-        guiGraphics: GuiGraphics,
-        mouseX: Double,
-        mouseY: Double
-    ) {
-        val mc = Minecraft.getInstance()
-        val pageText = Component.literal("Page ${recipe.pageIndex}/${recipe.totalPages}")
-        // Draw page text at the bottom
-        guiGraphics.drawString(mc.font, pageText, 5, 115, 0x404040, false)
     }
 }

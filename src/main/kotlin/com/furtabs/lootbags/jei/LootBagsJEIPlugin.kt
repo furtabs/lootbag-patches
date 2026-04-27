@@ -116,7 +116,7 @@ class LootBagsJEIPlugin : IModPlugin {
     }
 
     override fun registerRecipes(registration: IRecipeRegistration) {
-        val pageSize = 24 // Adjusted to match 6x4 or similar grid
+        val pageSize = 30 // Adjusted to match 6x4 or similar grid
         
         for (bagType in LootBagType.entries) {
             val recipeType = RECIPE_TYPES[bagType] ?: continue
