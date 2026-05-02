@@ -157,7 +157,7 @@ class BagOpenerBlockEntity(
     private val hasCraftingFinished: Boolean
         get() = progress >= maxProgress
 
-    private fun craftItem(inputSlot: Int) {
+private fun craftItem(inputSlot: Int) {
         if (inputSlot < 0 || inputSlot >= inputItemHandler.slots) return
 
         val inputItemStack = inputItemHandler.getStackInSlot(inputSlot)
@@ -167,15 +167,24 @@ class BagOpenerBlockEntity(
         val level = this.level ?: return
         val serverLevel = level as? ServerLevel ?: return
 
-        val loots: List<ItemStack> = bagItem.asLootBagType().lootGenerator.generateLoot(
-            serverLevel,
-            LootParams.Builder(serverLevel)
-                .withParameter(LootContextParams.BLOCK_STATE, blockState)
-                .withParameter(LootContextParams.BLOCK_ENTITY, this)
-                .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(blockPos)),
-            maxStacks = 5
-        )
+        // 1. Read existing cached loot from the bag's 1.21.1 Data Components
+        val storedLoot = com.furtabs.lootbags.util.readStoredOpenLoot(inputItemStack, serverLevel.registryAccess())
 
+        // 2. Decide to use the cached loot or roll new loot
+        val loots: List<ItemStack> = if (storedLoot != null && storedLoot.isNotEmpty()) {
+            storedLoot
+        } else {
+            bagItem.asLootBagType().lootGenerator.generateLoot(
+                serverLevel,
+                LootParams.Builder(serverLevel)
+                    .withParameter(LootContextParams.BLOCK_STATE, blockState)
+                    .withParameter(LootContextParams.BLOCK_ENTITY, this)
+                    .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(blockPos)),
+                maxStacks = 5
+            )
+        }
+
+        // 3. Process the loot
         if (loots.isNotEmpty()) {
             val extracted = inputItemHandler.extractItem(inputSlot, 1, false)
             if (!extracted.isEmpty) {

@@ -32,7 +32,7 @@ class LootBagItem(
 
         if (!level.isClientSide && level is ServerLevel && player is ServerPlayer) {
             // 1. Try to read existing loot from NBT
-            val stored = readStoredOpenLoot(stack)
+            val stored = readStoredOpenLoot(stack, level.registryAccess())
             
             // 2. Determine if we use stored loot or roll new loot
             val loots: List<ItemStack> = if (stored != null && stored.isNotEmpty()) {
@@ -48,7 +48,7 @@ class LootBagItem(
                     maxStacks = maxStacks
                 )
                 // Save it immediately so the Bag Opener or a re-open sees the same items
-                writeStoredOpenLoot(stack, generated)
+                writeStoredOpenLoot(stack, generated, level.registryAccess())
                 generated
             }
 

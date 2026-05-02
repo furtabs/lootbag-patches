@@ -86,7 +86,7 @@ class OpenLootBagMenu : AbstractContainerMenu {
                     itemsToSave.add(stack)
                 }
             }
-            writeStoredOpenLoot(bagStack, itemsToSave)
+            writeStoredOpenLoot(bagStack, itemsToSave, player.level().registryAccess())
         }
     }
 
