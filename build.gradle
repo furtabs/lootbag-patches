@@ -180,6 +180,16 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
 
+// Avoid failures from duplicate resource entries (e.g. pack.mcmeta). Exclude duplicates during copy/jar tasks.
+tasks.withType(Copy).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Also ensure tasks that extend AbstractCopyTask (like Jar) use the same strategy.
+tasks.withType(org.gradle.api.tasks.AbstractCopyTask).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 // Forge scans each classpath root (including Kotlin's output) as a mod/resource location.
 // Kotlin-only output has no pack.mcmeta unless we place one next to the compiled classes in dev.
 tasks.register("copyPackMetaToKotlinOutput", Copy) {

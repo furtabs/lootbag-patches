@@ -53,8 +53,16 @@ class LootBagItem(
                 generated
             }
 
-            // 3. Create the handler for the Menu
-            val handler = newLootResultHandlerWithLoot(loots)
+            // 3. Create the handler for the Menu and persist changes immediately
+            lateinit var handler: net.minecraftforge.items.ItemStackHandler
+            handler = newLootResultHandlerWithLoot(loots) { h ->
+                val toSave = mutableListOf<net.minecraft.world.item.ItemStack>()
+                for (i in 0 until MAX_LOOT_BAG_ITEM_STACKS) {
+                    val s = h.getStackInSlot(i)
+                    if (!s.isEmpty) toSave.add(s.copy())
+                }
+                writeStoredOpenLoot(stack, toSave)
+            }
 
             val menuProvider = object : MenuProvider {
                 override fun getDisplayName() = stack.hoverName

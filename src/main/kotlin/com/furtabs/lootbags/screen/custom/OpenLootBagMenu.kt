@@ -103,8 +103,11 @@ class OpenLootBagMenu : AbstractContainerMenu {
     }
 }
 
-fun newLootResultHandlerWithLoot(loot: List<ItemStack>): ItemStackHandler {
-    val h = newLootResultHandler()
+fun newLootResultHandlerWithLoot(
+    loot: List<ItemStack>,
+    onChanged: ((ItemStackHandler) -> Unit)? = null
+): ItemStackHandler {
+    val h = newLootResultHandler(onChanged)
     for ((i, item) in loot.withIndex()) {
         if (i < MAX_LOOT_BAG_ITEM_STACKS) {
             h.setStackInSlot(i, item.copy())
@@ -113,6 +116,12 @@ fun newLootResultHandlerWithLoot(loot: List<ItemStack>): ItemStackHandler {
     return h
 }
 
-private fun newLootResultHandler(): ItemStackHandler = object : ItemStackHandler(MAX_LOOT_BAG_ITEM_STACKS) {
-    override fun isItemValid(slot: Int, stack: ItemStack): Boolean = false
-}
+private fun newLootResultHandler(onChanged: ((ItemStackHandler) -> Unit)? = null): ItemStackHandler =
+    object : ItemStackHandler(MAX_LOOT_BAG_ITEM_STACKS) {
+        override fun onContentsChanged(slot: Int) {
+            super.onContentsChanged(slot)
+            onChanged?.invoke(this)
+        }
+
+        override fun isItemValid(slot: Int, stack: ItemStack): Boolean = false
+    }
