@@ -13,6 +13,7 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
+import net.minecraft.world.inventory.ClickType
 import net.minecraft.world.inventory.MenuType
 import net.minecraft.world.item.ItemStack
 import net.neoforged.neoforge.items.ItemStackHandler
@@ -61,6 +62,38 @@ class OpenLootBagMenu : AbstractContainerMenu {
     override fun quickMoveStack(player: Player, index: Int): ItemStack =
         quickMoveStack(this, player, index, MAX_LOOT_BAG_ITEM_STACKS, ::moveItemStackTo).also { broadcastChanges() }
 
+    override fun clicked(slotId: Int, button: Int, clickType: ClickType, player: Player) {
+        val blockedBagContainerSlot = if (usedHand == InteractionHand.MAIN_HAND) {
+            PLAYER_MAIN_INV_SLOT_COUNT + player.inventory.selected
+        } else {
+            -1
+        }
+
+        // Block interacting with the slot containing the opened bag to prevent duplication exploits.
+        if (slotId == blockedBagContainerSlot) {
+            return
+        }
+
+        // Also block number-key swaps that target the opened bag hotbar slot.
+        if (usedHand == InteractionHand.MAIN_HAND && clickType == ClickType.SWAP && button == player.inventory.selected) {
+            return
+        }
+
+        super.clicked(slotId, button, clickType, player)
+
+        if (player !is ServerPlayer) return
+
+        val allTaken = (0 until MAX_LOOT_BAG_ITEM_STACKS).all { lootHandler.getStackInSlot(it).isEmpty }
+        val playerSlotsCount = 36 // 27 inventory + 9 hotbar; these are added before loot slots
+        val clickedPlayerSlot = slotId in 0 until playerSlotsCount
+        val lastItemWasPlacedIntoSlot = clickedPlayerSlot && carried.isEmpty
+        val wasShiftTransferred = clickType == ClickType.QUICK_MOVE
+
+        if (allTaken && (lastItemWasPlacedIntoSlot || wasShiftTransferred)) {
+            player.closeContainer()
+        }
+    }
+
     override fun removed(player: Player) {
         super.removed(player)
         if (player !is ServerPlayer) return
@@ -91,6 +124,7 @@ class OpenLootBagMenu : AbstractContainerMenu {
     }
 
     companion object {
+        const val PLAYER_MAIN_INV_SLOT_COUNT: Int = 27
         const val PLAYER_INV_X: Int = 8
         const val PLAYER_INV_Y: Int = 46
         const val PLAYER_HOTBAR_X: Int = 8
@@ -100,8 +134,11 @@ class OpenLootBagMenu : AbstractContainerMenu {
     }
 }
 
-fun newLootResultHandlerWithLoot(loot: List<ItemStack>): ItemStackHandler {
-    val h = newLootResultHandler()
+fun newLootResultHandlerWithLoot(
+    loot: List<ItemStack>,
+    onChanged: ((ItemStackHandler) -> Unit)? = null
+): ItemStackHandler {
+    val h = newLootResultHandler(onChanged)
     for ((i, item) in loot.withIndex()) {
         if (i < MAX_LOOT_BAG_ITEM_STACKS) {
             h.setStackInSlot(i, item.copy())
@@ -110,6 +147,12 @@ fun newLootResultHandlerWithLoot(loot: List<ItemStack>): ItemStackHandler {
     return h
 }
 
-private fun newLootResultHandler(): ItemStackHandler = object : ItemStackHandler(MAX_LOOT_BAG_ITEM_STACKS) {
-    override fun isItemValid(slot: Int, stack: ItemStack): Boolean = false
-}
+private fun newLootResultHandler(onChanged: ((ItemStackHandler) -> Unit)? = null): ItemStackHandler =
+    object : ItemStackHandler(MAX_LOOT_BAG_ITEM_STACKS) {
+        override fun onContentsChanged(slot: Int) {
+            super.onContentsChanged(slot)
+            onChanged?.invoke(this)
+        }
+
+        override fun isItemValid(slot: Int, stack: ItemStack): Boolean = false
+    }
